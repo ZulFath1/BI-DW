@@ -14,10 +14,22 @@ Error handling:
     data/source/eksternal/stunting_<tahun>.html ("Save page as" dari browser);
     kegagalan web dicatat di dq.dq_log (WEB01) dan batch_log;
   - bila fallback juga tidak ada -> task GAGAL (Airflow akan retry).
+
+Berubah / tidak berubah (diputuskan 15 Nov 2026, K24):
+  HTML portal memuat token formulir yang berubah setiap diakses, sehingga checksum HTML mentah
+  selalu berbeda. Karena itu tabel diekstrak dulu (parser yang sama dengan staging), lalu dihitung
+  SHA-256 dari isi tabel dalam bentuk JSON kanonik (judul, baris data, baris total).
+  - sama dengan pengambilan terakhir -> TIDAK ada objek baru di data lake; manifest batch ini
+    dicatat 'tidak_berubah' dan menunjuk objek lama (lineage staging tetap jelas);
+  - berbeda / belum pernah -> HTML disimpan apa adanya sebagai objek baru (aturan raw zone);
+  - tabel tidak bisa diekstrak -> HTML tetap disimpan (untuk audit), PERINGATAN WEB02; staging
+    nanti gagal dengan StrukturSumberError.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import time
 from datetime import datetime
@@ -27,7 +39,8 @@ import requests
 from common.batch import catat_task, tulis_dq_log_mandiri
 from common.config import SUMBER_DIR, ZONA_WAKTU
 from common.errors import SumberTidakTersediaError
-from common.lake import buat_klien_s3, catat_manifest, simpan_objek_raw
+from common.lake import (HasilUnggah, buat_klien_s3, catat_manifest, manifest_terakhir_isi_tabel, objek_ada,
+                         simpan_objek_raw)
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +80,16 @@ def unduh_halaman(url: str, percobaan: int = 3, jeda_awal: float = 5.0) -> tuple
     raise SumberTidakTersediaError(f"portal gagal setelah {percobaan} percobaan: {type(galat).__name__}: {galat}")
 
 
+def checksum_isi_tabel(isi: bytes, tahun: int) -> str:
+    """SHA-256 dari isi tabel yang diekstrak (bukan HTML mentah)."""
+    from etl.staging_web import parse_halaman  # impor lokal: hindari impor melingkar dengan staging_web
+
+    judul, _catatan, data, total = parse_halaman(isi, tahun)
+    kanonik = json.dumps({"judul": judul, "data": data, "total": total}, ensure_ascii=False, sort_keys=True,
+                         separators=(",", ":"))
+    return hashlib.sha256(kanonik.encode("utf-8")).hexdigest()
+
+
 def ingest_stunting(batch_id: str, tahun_list: tuple[int, ...] = (2024, 2025),
                     percobaan_ke: int | None = None) -> dict[int, str]:
     hasil_per_tahun: dict[int, str] = {}
@@ -94,8 +117,23 @@ def ingest_stunting(batch_id: str, tahun_list: tuple[int, ...] = (2024, 2025),
                 cara, asal = "fallback_manual", f"eksternal/{cadangan.name}"
                 log.warning("E2 %s memakai berkas fallback manual %s", tahun, cadangan.name)
 
-            unggah = simpan_objek_raw(s3, sumber, f"stunting_{tahun}.html", isi, ctype, asal, waktu_ambil)
-            catat_manifest(batch_id, sumber, cara, asal, unggah, ctype, waktu_ambil, status)
+            try:
+                sha_tabel = checksum_isi_tabel(isi, tahun)
+            except Exception as err:  # struktur halaman berubah: simpan HTML untuk audit, staging akan gagal
+                sha_tabel = None
+                tulis_dq_log_mandiri(batch_id, "ingestion", [{
+                    "kode_aturan": "WEB02", "tingkat": "PERINGATAN", "objek": sumber,
+                    "keterangan": f"tabel tidak dapat diekstrak ({type(err).__name__}: {err}); HTML tetap disimpan",
+                }])
+            lama = manifest_terakhir_isi_tabel(sumber, batch_id) if sha_tabel else None
+            if lama and lama["sha256_isi_tabel"] == sha_tabel and objek_ada(s3, lama["bucket"], lama["object_key"],
+                                                                             lama["sha256"]):
+                unggah = HasilUnggah(lama["bucket"], lama["object_key"], lama["sha256"], lama["ukuran_byte"],
+                                     "tidak_berubah")
+                log.info("E2 %s: isi tabel sama dengan pengambilan terakhir — tidak ada objek baru", tahun)
+            else:
+                unggah = simpan_objek_raw(s3, sumber, f"stunting_{tahun}.html", isi, ctype, asal, waktu_ambil)
+            catat_manifest(batch_id, sumber, cara, asal, unggah, ctype, waktu_ambil, status, sha_tabel)
             hasil_per_tahun[tahun] = unggah.object_key
             catatan.append(f"{tahun}: {cara} -> {unggah.object_key} ({unggah.status_unggah})")
 

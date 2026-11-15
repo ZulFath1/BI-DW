@@ -1,0 +1,143 @@
+# Bukti 20 — validasi DWH terhadap angka acuan (sql/validasi/03_dwh.sql), setelah run manual__2026-11-15T15:32:55.833869+00:00
+== D01 Jumlah baris dimensi & fakta (acuan: dim_posyandu 503, dim_kelurahan 52, dim_waktu 48+1, dim_alat 11, fakta kunjungan 106.020, alat 4.900, kader 2.543 di UTS)
+            tabel             | count  
+------------------------------+--------
+ dim_posyandu                 |    503
+ dim_posyandu (posyandu unik) |    490
+ dim_kelurahan                |     52
+ dim_waktu                    |     49
+ dim_alat                     |     11
+ fact_kunjungan_bulanan       | 106020
+ fact_alat_snapshot           |   4900
+ fact_kader_snapshot          |   2542
+ fact_penduduk_kelurahan      |   1664
+ fact_stunting_kelurahan      |    104
+(10 rows)
+
+== D02 Baris anomali per tahun (acuan 2023–2026 total 2.073; 2025 = 826) dan per bit
+ tahun | baris_anomali | a1_ekstrem | a2_tinggi | a3_lonjakan | cakupan_gt_sasaran | negatif | sasaran0_cakupan | selisih_persen | t07_turunan 
+-------+---------------+------------+-----------+-------------+--------------------+---------+------------------+----------------+-------------
+  2023 |           284 |          0 |       223 |           5 |                 36 |       1 |                0 |             22 |          12
+  2024 |           333 |         37 |       277 |           7 |                 50 |       0 |                9 |              3 |          18
+  2025 |           826 |          0 |       262 |         523 |                 84 |       5 |                5 |              5 |          92
+  2026 |           630 |          1 |       282 |          33 |                163 |      71 |              114 |             90 |          48
+       |          2073 |         38 |      1044 |         568 |                333 |      77 |              128 |            120 |         170
+(5 rows)
+
+== D03 Status data per tahun
+ tahun |   nama_status    | count 
+-------+------------------+-------
+  2023 | Terlapor         | 11617
+  2023 | Tidak berlaku    | 12083
+  2024 | Terlapor         | 12839
+  2024 | Tidak berlaku    | 10861
+  2025 | Terlapor         | 28037
+  2025 | Tidak berlaku    |  1183
+  2026 | Belum dilaporkan |  7350
+  2026 | Terlapor         | 19232
+  2026 | Tidak terisi     |  2818
+(9 rows)
+
+== D04 Kelengkapan Desember 2025 (acuan 475 dari 487)
+ posyandu_terlapor | posyandu_aktif 
+-------------------+----------------
+               475 |            487
+(1 row)
+
+== D05 Cakupan 2025 = Σ cakupan ÷ Σ sasaran, Terlapor, tanpa A1 (acuan bayi balita 58,7%; ibu hamil 56,6%)
+      nama_kelompok      | cakupan | sasaran | persen 
+-------------------------+---------+---------+--------
+ Ibu Hamil               |   10577 |   18655 |  56.70
+ Bayi Balita             |  166622 |  283775 |  58.72
+ Usia Sekolah dan Remaja |   30390 |  477899 |   6.36
+ Usia Produktif          |  146071 | 1208737 |  12.08
+ Lansia                  |   64208 |  300177 |  21.39
+(5 rows)
+
+== D06 Sasaran bayi balita Des 2025 per kecamatan (acuan Tengah 3.499, Utara 6.281, Barat 5.151, Selatan 5.530, Timur 2.838; kota 23.299)
+      kecamatan      | sasaran_bayi_balita 
+---------------------+---------------------
+ BANJARMASIN BARAT   |                5151
+ BANJARMASIN SELATAN |                5530
+ BANJARMASIN TENGAH  |                3499
+ BANJARMASIN TIMUR   |                2838
+ BANJARMASIN UTARA   |                6281
+ KOTA                |               23299
+(6 rows)
+
+== D07 Posyandu dengan < 5 baris kader (acuan UTS 32 dari 483; lihat P07)
+ kurang_dari_5 | posyandu_berkader 
+---------------+-------------------
+            31 |               482
+(1 row)
+
+== D08 Alat: minimal satu alat rusak/tidak standar (acuan 335 dari 490); lengkap 5 alat standar baik (acuan 164)
+ bermasalah | lengkap_standar | posyandu 
+------------+-----------------+----------
+        335 |             164 |      490
+(1 row)
+
+== D09 Rasio stunting (acuan kota 2025 3,85%) — rasio terhadap penduduk balita, bukan prevalensi
+  tingkat  |   nama_kecamatan    | tahun | jumlah_stunting | penduduk_0_4 | rasio_persen | is_pendekatan 
+-----------+---------------------+-------+-----------------+--------------+--------------+---------------
+ kota      |                     |  2024 |            1432 |        39805 |         3.60 | t
+ kecamatan | BANJARMASIN BARAT   |  2024 |             253 |         7708 |         3.28 | t
+ kecamatan | BANJARMASIN SELATAN |  2024 |             445 |        10670 |         4.17 | t
+ kecamatan | BANJARMASIN TENGAH  |  2024 |             184 |         4778 |         3.85 | t
+ kecamatan | BANJARMASIN TIMUR   |  2024 |             259 |         7455 |         3.47 | t
+ kecamatan | BANJARMASIN UTARA   |  2024 |             291 |         9194 |         3.17 | t
+ kota      |                     |  2025 |            1531 |        39805 |         3.85 | f
+ kecamatan | BANJARMASIN BARAT   |  2025 |             328 |         7708 |         4.26 | f
+ kecamatan | BANJARMASIN SELATAN |  2025 |             459 |        10670 |         4.30 | f
+ kecamatan | BANJARMASIN TENGAH  |  2025 |             185 |         4778 |         3.87 | f
+ kecamatan | BANJARMASIN TIMUR   |  2025 |             280 |         7455 |         3.76 | f
+ kecamatan | BANJARMASIN UTARA   |  2025 |             279 |         9194 |         3.03 | f
+(12 rows)
+
+== D10 SCD tipe 2: posyandu dengan lebih dari satu versi
+ puskesmas_lama | puskesmas_baru | berlaku_mulai | posyandu 
+----------------+----------------+---------------+----------
+ PEKAUMAN       | MANTUIL        | 2024-01-01    |       13
+(1 row)
+
+== D11 Kader snapshot: waktu & periode (K21) dan penanda kualitas penduduk (K16)
+ waktu_key |       nama_bulan       | is_bulan_diketahui | periode_snapshot | count 
+-----------+------------------------+--------------------+------------------+-------
+    202600 | Tidak diketahui (2026) | f                  | Tahun 2026       |  2542
+(1 row)
+
+ nama_kelurahan |        flag_kualitas         | baris | penduduk 
+----------------+------------------------------+-------+----------
+ KELAYAN TENGAH | label umur dari urutan baris |    32 |     7909
+(1 row)
+
+== D12 Pemetaan kelompok umur -> kelompok sasaran (K20)
+ label_umur |      nama_kelompok      | ketepatan_pemetaan 
+------------+-------------------------+--------------------
+ 0-4        | Bayi Balita             | pendekatan
+ 5-9        | Usia Sekolah dan Remaja | pendekatan
+ 10-14      | Usia Sekolah dan Remaja | pendekatan
+ 15-19      | Usia Sekolah dan Remaja | pendekatan
+ 20-24      | Usia Produktif          | pendekatan
+ 25-29      | Usia Produktif          | pendekatan
+ 30-34      | Usia Produktif          | pendekatan
+ 35-39      | Usia Produktif          | pendekatan
+ 40-44      | Usia Produktif          | pendekatan
+ 45-49      | Usia Produktif          | pendekatan
+ 50-54      | Usia Produktif          | pendekatan
+ 55-59      | Usia Produktif          | pendekatan
+ 60-64      | Lansia                  | tepat
+ 65-69      | Lansia                  | tepat
+ 70-74      | Lansia                  | tepat
+ >=75       | Lansia                  | tepat
+(16 rows)
+
+== D13 Pemetaan nama posyandu Antrop & Kader (T14)
+ sumber |       cara       | count 
+--------+------------------+-------
+ antrop | kunci            |   481
+ antrop | manual           |     9
+ kader  | kunci            |  2544
+ kader  | tidak_terpetakan |     1
+(4 rows)
+

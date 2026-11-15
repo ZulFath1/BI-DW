@@ -34,10 +34,26 @@ def _task_staging():
     }
 
 
+def _task_transform():
+    from etl.transform import transform
+    return {"transform": transform}
+
+
+def _task_gate_load():
+    from etl.load_dw import load_dw
+    from quality.quality_gate import quality_gate
+
+    def gate(batch_id):
+        h = quality_gate(batch_id)
+        if not h["lulus"]:  # di Airflow ini menjadi cabang ke task quarantine
+            raise RuntimeError(f"quality gate kritis gagal: {h['gagal_kritis']} — load dibatalkan")
+    return {"quality-gate": gate, "load-dw": load_dw}
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="python -m etl.cli", description="Task pipeline posyandu")
-    p.add_argument("perintah", help="schema | ingest | staging | semua | nama task (mis. ingest-excel, staging-kader)")
+    p.add_argument("perintah", help="schema | ingest | staging | semua | nama task (mis. ingest-excel, staging-kader, transform, quality-gate, load-dw)")
     p.add_argument("--batch-id", default=None, help="default: manual__<waktu sekarang>")
     a = p.parse_args(argv)
     batch_id = a.batch_id or buat_batch_id()
@@ -52,9 +68,10 @@ def main(argv: list[str] | None = None) -> int:
     elif a.perintah == "staging":
         urutan = _task_staging()
     elif a.perintah == "semua":
-        urutan = {"schema": init_schema, **_task_ingest(), **_task_staging()}
+        urutan = {"schema": init_schema, **_task_ingest(), **_task_staging(), **_task_transform(),
+                  **_task_gate_load()}
     else:
-        semua = {**_task_ingest(), **_task_staging()}
+        semua = {**_task_ingest(), **_task_staging(), **_task_transform(), **_task_gate_load()}
         if a.perintah not in semua:
             p.error(f"perintah tidak dikenal: {a.perintah}")
         urutan = {a.perintah: semua[a.perintah]}

@@ -1,0 +1,19 @@
+# Bukti 19 — uji quality gate, rollback, idempotensi (tests/uji_quality_gate.py) dan uji ulang E1–E5
+# Dijalankan 15 Nov 2026 ±23.31 WITA di container airflow-scheduler. Keluaran disalin apa adanya.
+
+$ docker compose exec airflow-scheduler python -m tests.uji_quality_gate
+[LULUS] E6: pemeriksaan kritis gagal ['Q06']; load dibatalkan (ROLLBACK), DWH tidak berubah; batch_log=[('GAGAL',)]; Q06=[(False, "kolom terlarang: ['mart.uji_q06_kader.nama_kader']")]; DWH sama sebelum/sesudah: True
+[LULUS] E7: gate lulus=False kritis=['Q02'] -> cabang quarantine; quarantine raise=True; dq.quarantine: quality gate gagal (kritis: ['Q02']); curated tidak dimuat ke DWH; DWH tidak berubah: True
+[LULUS] E8: load_dw 2× berturut-turut: jumlah baris, Σ sasaran, dan Σ surrogate key sama = True (106020, 6283900, 4900)
+RINGKASAN: 3/3 skenario lulus
+
+$ docker compose exec airflow-scheduler python -m tests.uji_error_handling   (uji ulang setelah perubahan ingest_web)
+[LULUS] E1: 3 percobaan dengan jeda 1 s & 2 s, lalu OperationalError dilempar (task gagal -> retry Airflow)
+[LULUS] E2: SumberTidakTersediaError; batch_log=[('GAGAL',)]; WEB01=1; pesan: E2 2025: portal gagal setelah 3 percobaan: ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=9): Max
+[LULUS] E3: manifest=[('fallback_manual', 'eksternal/stunting_2025.html')]; isi fallback ter-parse 52 kelurahan
+[LULUS] E4: DataKorupError; quarantine=1; staging sebelum=(106020, 'scheduled__2026-11-09T18:00:00+00:00') sesudah=(106020, 'scheduled__2026-11-09T18:00:00+00:00') (tidak berubah)
+[LULUS] E5: struktur asli lolos; struktur bergeser ditolak: sheet 2025: struktur header tidak sesuai (373 beda), contoh: ["F: bulan 'None'", "F: kelompok 'None'", "F: metrik 'None'
+RINGKASAN: 5/5 skenario lulus
+
+Catatan: setelah uji, DAG dijalankan ulang (manual__2026-11-15T15:32:55.833869+00:00) sehingga isi
+curated dan dw berasal dari run Airflow resmi, bukan dari batch uji.

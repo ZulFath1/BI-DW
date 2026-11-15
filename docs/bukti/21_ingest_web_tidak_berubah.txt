@@ -1,0 +1,16 @@
+# Bukti 21 — ingest_web: berubah/tidak ditentukan dari checksum ISI TABEL (K24)
+# weba = pengambilan pertama setelah fitur aktif (belum ada checksum tabel sebelumnya -> objek baru);
+# webb dan run DAG = isi tabel sama -> 'tidak_berubah', tidak ada objek baru, manifest menunjuk objek lama
+                 batch_id                 |      sumber      |   cara_ambil    | status_unggah |                      object_key                       |   sha_html   |  sha_tabel   
+------------------------------------------+------------------+-----------------+---------------+-------------------------------------------------------+--------------+--------------
+ manual__20261115_minggu2_weba            | e2_stunting_2024 | web             | diunggah      | e2_stunting_2024/2026-11-15/232842_stunting_2024.html | 391ddd32bd05 | b0a9dc7cf17a
+ manual__20261115_minggu2_weba            | e2_stunting_2025 | web             | diunggah      | e2_stunting_2025/2026-11-15/232843_stunting_2025.html | 34a0b2b3c4b1 | 11a7b8fc70c2
+ manual__20261115_minggu2_webb            | e2_stunting_2024 | web             | tidak_berubah | e2_stunting_2024/2026-11-15/232842_stunting_2024.html | 391ddd32bd05 | b0a9dc7cf17a
+ manual__20261115_minggu2_webb            | e2_stunting_2025 | web             | tidak_berubah | e2_stunting_2025/2026-11-15/232843_stunting_2025.html | 34a0b2b3c4b1 | 11a7b8fc70c2
+ scheduled__2026-11-09T18:00:00+00:00     | e2_stunting_2024 | web             | tidak_berubah | e2_stunting_2024/2026-11-15/232842_stunting_2024.html | 391ddd32bd05 | b0a9dc7cf17a
+ scheduled__2026-11-09T18:00:00+00:00     | e2_stunting_2025 | web             | tidak_berubah | e2_stunting_2025/2026-11-15/232843_stunting_2025.html | 34a0b2b3c4b1 | 11a7b8fc70c2
+ uji__web_fallback_20261115T233203        | e2_stunting_2025 | fallback_manual | tidak_berubah | e2_stunting_2025/2026-11-15/232843_stunting_2025.html | 34a0b2b3c4b1 | 11a7b8fc70c2
+ manual__2026-11-15T15:32:55.833869+00:00 | e2_stunting_2024 | web             | tidak_berubah | e2_stunting_2024/2026-11-15/232842_stunting_2024.html | 391ddd32bd05 | b0a9dc7cf17a
+ manual__2026-11-15T15:32:55.833869+00:00 | e2_stunting_2025 | web             | tidak_berubah | e2_stunting_2025/2026-11-15/232843_stunting_2025.html | 34a0b2b3c4b1 | 11a7b8fc70c2
+(9 rows)
+

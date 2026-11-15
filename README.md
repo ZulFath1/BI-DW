@@ -7,9 +7,10 @@ Proyek UAS Kecerdasan Bisnis (bidang Big Data). Membangun pipeline data dari lap
 kunjungan posyandu dan data terbuka kependudukan/stunting menjadi data lake, data
 warehouse (galaxy schema), data mart, model clustering, dan dashboard.
 
-> **Status (15 Nov 2026):** tahap 1–4 selesai — infrastruktur; ingestion ke data lake;
-> staging; schema DWH (galaxy schema, dimensi konstanta terisi). Belum: transform T01–T19,
-> quality gate Q01–Q09, load fakta, DAG Airflow, data mart, ML, dashboard berisi data.
+> **Status (15 Nov 2026):** tahap 1–7 selesai — infrastruktur; ingestion ke data lake; staging;
+> schema DWH; transform T01–T19 ke `curated`; quality gate Q01–Q09; DWH terisi (106.020 baris
+> fakta kunjungan); DAG Airflow `posyandu_pipeline` berjalan terjadwal (tanggal 10 setiap bulan).
+> Belum: data mart, ML (clustering), dashboard berisi data, backup/restore.
 > Rincian per tahap: [docs/laporan_tahap/](docs/laporan_tahap/).
 
 ## Arsitektur
@@ -92,19 +93,35 @@ Prasyarat: Docker Desktop (WSL 2) dengan RAM minimal ±6 GB untuk Docker.
 
 Mematikan layanan (data tetap tersimpan di volume): `docker compose down`.
 
-### Menjalankan pipeline (sementara lewat CLI; DAG Airflow menyusul)
+### Menjalankan pipeline
+
+Cara utama: DAG Airflow **`posyandu_pipeline`** (UI <http://127.0.0.1:8081>). DAG berjalan otomatis
+tanggal 10 setiap bulan pukul 02.00 WITA; untuk menjalankan sekarang:
 
 ```bash
-# schema (dq, stg, dw) + ingestion ke data lake + staging
-docker compose exec airflow-scheduler python -m etl.cli semua
-# validasi hasil staging
+docker compose exec airflow-scheduler airflow dags unpause posyandu_pipeline   # sekali saja
+docker compose exec airflow-scheduler airflow dags trigger posyandu_pipeline
+```
+
+Alur DAG: `init_schema → ingest_excel/ingest_pdf/ingest_web → load_staging (5 task) → transform →
+quality_gate → load_dw` (atau `quarantine` bila pemeriksaan kritis gagal). Lihat [dags/README.md](dags/README.md).
+
+Cara alternatif (pengembangan/uji), fungsi yang sama lewat CLI:
+
+```bash
+docker compose exec airflow-scheduler python -m etl.cli semua          # schema → ... → load_dw
+# validasi hasil staging dan DWH (dibandingkan dengan angka acuan)
 docker compose exec -T postgres sh -c 'psql -U "$ETL_USER" -d "$DW_DB"' < sql/validasi/01_staging.sql
-# uji skenario error handling (DB terputus, web gagal, data korup, struktur berubah)
+docker compose exec -T postgres sh -c 'psql -U "$ETL_USER" -d "$DW_DB"' < sql/validasi/03_dwh.sql
+# uji error handling: DB terputus, web gagal, data korup, struktur berubah (E1–E5)
 docker compose exec airflow-scheduler python -m tests.uji_error_handling
+# uji quality gate: rollback Q06, quarantine Q02, idempotensi load (E6–E8)
+docker compose exec airflow-scheduler python -m tests.uji_quality_gate
 ```
 
 Status setiap task tercatat di `dq.batch_log`; temuan kualitas di `dq.dq_log`; berkas/data yang
-ditolak di `dq.quarantine`; lineage berkas mentah di `dq.ingest_manifest`.
+ditolak di `dq.quarantine`; lineage berkas mentah di `dq.ingest_manifest`; hasil Q01–Q09 di
+`dq.quality_result`.
 
 ### Database
 

@@ -1,0 +1,114 @@
+# Bukti 16 — eksekusi DAG posyandu_pipeline (Airflow 3.3.2), diambil 2026-11-15 23:33 CST
+
+## Daftar DAG run
+dag_id            | run_id                                | state   | run_after                        | logical_date              | start_date                       | end_date                        
+==================+=======================================+=========+==================================+===========================+==================================+=================================
+posyandu_pipeline | manual__2026-11-15T15:32:55.833869+00 | success | 2026-11-15T15:32:55.833869+00:00 |                           | 2026-11-15T15:32:56.226357+00:00 | 2026-11-15T15:33:35.554919+00:00
+                  | :00                                   |         |                                  |                           |                                  |                                 
+posyandu_pipeline | scheduled__2026-11-09T18:00:00+00:00  | success | 2026-11-09T18:00:00+00:00        | 2026-11-09T18:00:00+00:00 | 2026-11-15T15:29:54.270145+00:00 | 2026-11-15T15:30:47.377745+00:00
+
+## Status task run scheduled__2026-11-09T18:00:00+00:00
+dag_id            | logical_date              | task_id                      | state   | start_date                       | end_date        
+==================+===========================+==============================+=========+==================================+=================
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | init_schema                  | success | 2026-11-15T15:29:54.842214+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | ingest_excel                 | success | 2026-11-15T15:30:08.324101+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | ingest_pdf                   | success | 2026-11-15T15:30:08.329991+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_staging.staging_antrop  | success | 2026-11-15T15:30:10.461249+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_staging.staging_kader   | success | 2026-11-15T15:30:10.459579+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_staging.staging_web     | success | 2026-11-15T15:30:12.041698+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_staging.staging_laporan | success | 2026-11-15T15:30:10.460836+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_staging.staging_pdf     | success | 2026-11-15T15:30:10.461155+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | transform                    | success | 2026-11-15T15:30:30.506434+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | quarantine                   | skipped | 2026-11-15T15:30:42.218171+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | quality_gate                 | success | 2026-11-15T15:30:41.612407+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | load_dw                      | success | 2026-11-15T15:30:43.239233+00:00 | 2026-11-15T15:30
+posyandu_pipeline | 2026-11-09T18:00:00+00:00 | ingest_web                   | success | 2026-11-15T15:30:08.414482+00:00 | 2026-11-15T15:30
+                                                                                                                                            
+
+## dq.batch_log run scheduled__2026-11-09T18:00:00+00:00
+              task_name               | status | jumlah_baris | percobaan_ke | detik |                                                                         pesan                                                                          
+--------------------------------------+--------+--------------+--------------+-------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ init_schema                          | SUKSES |            6 |              |   0.0 | DDL diterapkan: 01_dq.sql, 02_stg.sql, 03_dw.sql, 04_dw_seed.sql, 05_dw_view.sql, 06_curated.sql
+ ingest_internal_laporan_posyandu     | SUKSES |            1 |            1 |   0.3 | raw/internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_Posyandu.xlsx (sudah_ada), 2524269 byte, sha256 f21c45b8000f…
+ ingest_e1_disdukcapil_agregat_2025s2 | SUKSES |            1 |            1 |   0.3 | raw/e1_disdukcapil_agregat_2025s2/2026-11-15/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf (sudah_ada), 9108359 byte, sha2
+ ingest_web                           | SUKSES |            2 |            1 |   1.0 | 2024: web -> e2_stunting_2024/2026-11-15/232842_stunting_2024.html (tidak_berubah); 2025: web -> e2_stunting_2025/2026-11-15/232843_stunting_2025.html
+ staging_pdf                          | SUKSES |          992 |            1 |  18.8 | 992 baris; 52 kelurahan; peringatan bentuk: 16
+ staging_antrop                       | SUKSES |          491 |            1 |   0.6 | 490 baris posyandu + 1 baris total; cut off : JUNI 2026
+ staging_kader                        | SUKSES |         2545 |            1 |   0.8 | 2545 kader; nama kosong 0; kolom tanpa header berisi: 1
+ staging_laporan                      | SUKSES |       106020 |            1 |  10.3 | posyandu per sheet: 2023=395, 2024=395, 2025=487, 2026=490
+ staging_web                          | SUKSES |          106 |            1 |   0.3 | baris kelurahan: 2024=52, 2025=52
+ transform                            | SUKSES |       120587 |            1 |   9.5 | staging batch scheduled__2026-11-09T18:00:00+00:00; curated: kelurahan=52, posyandu_versi=503, pemetaan=4802, kunjungan=106020, alat=4900, kader=2542,
+ quality_gate                         | SUKSES |            6 |            1 |   0.4 | lulus 6/6; gagal kritis []; peringatan []
+ load_dw                              | SUKSES |       115230 |            1 |   3.7 | COMMIT; Q04/Q05/Q06 lulus; fact_kunjungan_bulanan=106020, fact_alat_snapshot=4900, fact_kader_snapshot=2542, fact_penduduk_kelurahan=1664, fact_stunti
+(12 rows)
+
+
+## Status task run manual__2026-11-15T15:32:55.833869+00:00
+dag_id            | logical_date | task_id                      | state   | start_date                       | end_date                     
+==================+==============+==============================+=========+==================================+==============================
+posyandu_pipeline |              | ingest_excel                 | success | 2026-11-15T15:32:56.965858+00:00 | 2026-11-15T15:32:57.740275+00
+posyandu_pipeline |              | quality_gate                 | success | 2026-11-15T15:33:30.055003+00:00 | 2026-11-15T15:33:30.713261+00
+posyandu_pipeline |              | init_schema                  | success | 2026-11-15T15:32:56.305638+00:00 | 2026-11-15T15:32:56.727127+00
+posyandu_pipeline |              | ingest_pdf                   | success | 2026-11-15T15:32:56.969495+00:00 | 2026-11-15T15:32:57.804517+00
+posyandu_pipeline |              | ingest_web                   | success | 2026-11-15T15:32:56.969541+00:00 | 2026-11-15T15:32:58.575000+00
+posyandu_pipeline |              | load_staging.staging_antrop  | success | 2026-11-15T15:32:58.816016+00:00 | 2026-11-15T15:33:00.438053+00
+posyandu_pipeline |              | load_staging.staging_kader   | success | 2026-11-15T15:32:58.817019+00:00 | 2026-11-15T15:33:00.663599+00
+posyandu_pipeline |              | load_staging.staging_web     | success | 2026-11-15T15:33:00.499760+00:00 | 2026-11-15T15:33:01.421132+00
+posyandu_pipeline |              | load_staging.staging_laporan | success | 2026-11-15T15:32:58.812147+00:00 | 2026-11-15T15:33:09.843034+00
+posyandu_pipeline |              | load_staging.staging_pdf     | success | 2026-11-15T15:32:58.818571+00:00 | 2026-11-15T15:33:18.310557+00
+posyandu_pipeline |              | transform                    | success | 2026-11-15T15:33:19.241976+00:00 | 2026-11-15T15:33:29.808803+00
+posyandu_pipeline |              | quarantine                   | skipped | 2026-11-15T15:33:30.703281+00:00 | 2026-11-15T15:33:30.703281+00
+posyandu_pipeline |              | load_dw                      | success | 2026-11-15T15:33:31.211742+00:00 | 2026-11-15T15:33:34.971522+00
+                                                                                                                                            
+
+## dq.batch_log run manual__2026-11-15T15:32:55.833869+00:00
+              task_name               | status | jumlah_baris | percobaan_ke | detik |                                                                         pesan                                                                          
+--------------------------------------+--------+--------------+--------------+-------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ init_schema                          | SUKSES |            6 |              |   0.0 | DDL diterapkan: 01_dq.sql, 02_stg.sql, 03_dw.sql, 04_dw_seed.sql, 05_dw_view.sql, 06_curated.sql
+ ingest_internal_laporan_posyandu     | SUKSES |            1 |            1 |   0.2 | raw/internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_Posyandu.xlsx (sudah_ada), 2524269 byte, sha256 f21c45b8000f…
+ ingest_e1_disdukcapil_agregat_2025s2 | SUKSES |            1 |            1 |   0.3 | raw/e1_disdukcapil_agregat_2025s2/2026-11-15/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf (sudah_ada), 9108359 byte, sha2
+ ingest_web                           | SUKSES |            2 |            1 |   1.0 | 2024: web -> e2_stunting_2024/2026-11-15/232842_stunting_2024.html (tidak_berubah); 2025: web -> e2_stunting_2025/2026-11-15/232843_stunting_2025.html
+ staging_pdf                          | SUKSES |          992 |            1 |  18.8 | 992 baris; 52 kelurahan; peringatan bentuk: 16
+ staging_antrop                       | SUKSES |          491 |            1 |   0.7 | 490 baris posyandu + 1 baris total; cut off : JUNI 2026
+ staging_kader                        | SUKSES |         2545 |            1 |   0.9 | 2545 kader; nama kosong 0; kolom tanpa header berisi: 1
+ staging_laporan                      | SUKSES |       106020 |            1 |  10.0 | posyandu per sheet: 2023=395, 2024=395, 2025=487, 2026=490
+ staging_web                          | SUKSES |          106 |            1 |   0.4 | baris kelurahan: 2024=52, 2025=52
+ transform                            | SUKSES |       120587 |            1 |   9.7 | staging batch manual__2026-11-15T15:32:55.833869+00:00; curated: kelurahan=52, posyandu_versi=503, pemetaan=4802, kunjungan=106020, alat=4900, kader=2
+ quality_gate                         | SUKSES |            6 |            1 |   0.4 | lulus 6/6; gagal kritis []; peringatan []
+ load_dw                              | SUKSES |       115230 |            1 |   3.5 | COMMIT; Q04/Q05/Q06 lulus; fact_kunjungan_bulanan=106020, fact_alat_snapshot=4900, fact_kader_snapshot=2542, fact_penduduk_kelurahan=1664, fact_stunti
+(12 rows)
+
+
+## Run final dengan kode akhir tahap 5–7: manual__2026-11-15T15:39:33.889929+00:00
+dag_id            | logical_date | task_id                      | state   | start_date                       | end_date                     
+==================+==============+==============================+=========+==================================+==============================
+posyandu_pipeline |              | ingest_excel                 | success | 2026-11-15T15:39:35.508032+00:00 | 2026-11-15T15:39:36.249228+00
+posyandu_pipeline |              | load_staging.staging_laporan | success | 2026-11-15T15:39:37.821761+00:00 | 2026-11-15T15:39:50.286394+00
+posyandu_pipeline |              | quality_gate                 | success | 2026-11-15T15:40:12.322768+00:00 | 2026-11-15T15:40:13.061863+00
+posyandu_pipeline |              | init_schema                  | success | 2026-11-15T15:39:34.316696+00:00 | 2026-11-15T15:39:34.702299+00
+posyandu_pipeline |              | ingest_pdf                   | success | 2026-11-15T15:39:35.500797+00:00 | 2026-11-15T15:39:36.291918+00
+posyandu_pipeline |              | ingest_web                   | success | 2026-11-15T15:39:35.503137+00:00 | 2026-11-15T15:39:37.167644+00
+posyandu_pipeline |              | load_staging.staging_antrop  | success | 2026-11-15T15:39:37.820153+00:00 | 2026-11-15T15:39:39.492981+00
+posyandu_pipeline |              | load_staging.staging_kader   | success | 2026-11-15T15:39:37.820395+00:00 | 2026-11-15T15:39:39.761690+00
+posyandu_pipeline |              | load_staging.staging_web     | success | 2026-11-15T15:39:39.562290+00:00 | 2026-11-15T15:39:40.783945+00
+posyandu_pipeline |              | load_staging.staging_pdf     | success | 2026-11-15T15:39:37.815943+00:00 | 2026-11-15T15:39:59.412416+00
+posyandu_pipeline |              | transform                    | success | 2026-11-15T15:40:00.132758+00:00 | 2026-11-15T15:40:11.226310+00
+posyandu_pipeline |              | quarantine                   | skipped | 2026-11-15T15:40:13.045380+00:00 | 2026-11-15T15:40:13.045380+00
+posyandu_pipeline |              | load_dw                      | success | 2026-11-15T15:40:14.193589+00:00 | 2026-11-15T15:40:19.000542+00
+                                                                                                                                            
+              task_name               | status | jumlah_baris | detik 
+--------------------------------------+--------+--------------+-------
+ init_schema                          | SUKSES |            6 |   0.0
+ ingest_e1_disdukcapil_agregat_2025s2 | SUKSES |            1 |   0.3
+ ingest_internal_laporan_posyandu     | SUKSES |            1 |   0.2
+ ingest_web                           | SUKSES |            2 |   1.1
+ staging_pdf                          | SUKSES |          992 |  20.8
+ staging_kader                        | SUKSES |         2545 |   0.9
+ staging_antrop                       | SUKSES |          491 |   0.7
+ staging_laporan                      | SUKSES |       106020 |  11.4
+ staging_web                          | SUKSES |          106 |   0.5
+ transform                            | SUKSES |       120587 |  10.2
+ quality_gate                         | SUKSES |            6 |   0.5
+ load_dw                              | SUKSES |       115230 |   4.5
+(12 rows)
+

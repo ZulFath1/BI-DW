@@ -4,7 +4,7 @@
 -- dim_kelurahan dan dim_posyandu TIDAK diisi di sini; keduanya dibangun dari data (transform).
 -- =====================================================================
 
--- dim_waktu: 48 bulan (Jan 2023 – Des 2026)
+-- dim_waktu: 48 bulan (Jan 2023 – Des 2026) + anggota "bulan tidak diketahui" 2026 (K21)
 INSERT INTO dw.dim_waktu (waktu_key, tanggal_awal, tahun, semester, kuartal, bulan, nama_bulan)
 SELECT to_char(d, 'YYYYMM')::int,
        d::date,
@@ -15,6 +15,11 @@ SELECT to_char(d, 'YYYYMM')::int,
        (ARRAY['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus',
               'September', 'Oktober', 'November', 'Desember'])[extract(month FROM d)::int]
 FROM generate_series(DATE '2023-01-01', DATE '2026-12-01', INTERVAL '1 month') AS g(d)
+ON CONFLICT (waktu_key) DO NOTHING;
+
+-- K21: anggota "bulan tidak diketahui" untuk snapshot Kader (sumber hanya menyebut "Tahun 2026").
+INSERT INTO dw.dim_waktu (waktu_key, tanggal_awal, tahun, semester, kuartal, bulan, nama_bulan, is_bulan_diketahui)
+VALUES (202600, NULL, 2026, NULL, NULL, NULL, 'Tidak diketahui (2026)', false)
 ON CONFLICT (waktu_key) DO NOTHING;
 
 -- dim_kelompok_sasaran: urutan = urutan kolom sumber; ambang A2 dari dokumen UTS (T09)
@@ -34,9 +39,10 @@ INSERT INTO dw.dim_status_data (status_key, nama_status, keterangan) VALUES
     (4, 'Belum dilaporkan', 'Bulan tanpa data pada tahun berjalan; tidak dimuat sebagai 0')
 ON CONFLICT (status_key) DO NOTHING;
 
--- dim_alat: 5 alat × (standar, tidak standar) + tensimeter (T14: data tidak tersedia).
--- Catatan: dokumen UTS menyebut 10 baris sekaligus meminta tensimeter dimuat -> 11 baris.
--- Lihat docs/KEPUTUSAN.md K15 (menunggu konfirmasi pemilik).
+-- dim_alat: 5 alat × (standar, tidak standar) + tensimeter berstatus "data tidak tersedia" (T14).
+-- K15 (diputuskan): 11 baris. Dokumen UTS menulis 10 baris tetapi T14 meminta tensimeter ada di
+-- dim_alat; angka 10 dikoreksi (PERUBAHAN_DARI_UTS P04). fact_alat_snapshot tetap maks. 490 × 10,
+-- karena tensimeter tidak dimuat ke fakta.
 INSERT INTO dw.dim_alat (alat_key, kode_alat, nama_alat, kategori_standar, ketersediaan_data, kolom_sumber) VALUES
     (1,  'timbangan_bayi_std',   'Timbangan bayi digital',  'Standar',       'tersedia', 'timbangan_bayi_std'),
     (2,  'timbangan_bayi_tstd',  'Timbangan bayi digital',  'Tidak standar', 'tersedia', 'timbangan_bayi_tstd'),
@@ -52,25 +58,32 @@ INSERT INTO dw.dim_alat (alat_key, kode_alat, nama_alat, kategori_standar, keter
 ON CONFLICT (alat_key) DO NOTHING;
 
 -- dim_kelompok_umur: 16 kelompok buku Disdukcapil + pemetaan ke kelompok sasaran posyandu.
--- Batas umur kelompok sasaran yang dipakai (BELUM DIVERIFIKASI terhadap Panduan [5] UTS):
---   bayi balita 0–59 bulan; usia sekolah & remaja 6–18 th; usia produktif 19–59 th; lansia >= 60 th.
--- 'tepat' bila rentang 5 tahunan seluruhnya berada di dalam satu kelompok sasaran; selain itu 'pendekatan'.
--- Ibu hamil tidak dapat dipetakan dari kelompok umur.
+-- K20 (diputuskan): batas Panduan Kemenkes 2023 [5] seperti dikutip dokumen UTS (Definition and Terms):
+--   bayi & anak prasekolah 0–6 th; usia sekolah & remaja >6–18 th; usia dewasa >18–59 th; lansia >= 60 th.
+--   bayi balita       -> 0-4            'pendekatan' (balita 0–59 bulan; Panduan memakai 0–6 th)
+--   sekolah & remaja  -> 5-9 .. 15-19   'pendekatan' (batas >6–18 tidak jatuh di batas 5 tahunan)
+--   usia produktif    -> 20-24 .. 55-59 'pendekatan' (produktif = dewasa >18–59 adalah ASUMSI perancangan)
+--   lansia            -> 60-64 .. >=75  'tepat'
+--   ibu hamil tidak dapat dipetakan dari kelompok umur.
+-- Catatan: definisi BPS "usia produktif" = 15–64 tahun, berbeda dengan pemetaan ini.
+-- ON CONFLICT DO UPDATE agar database lama ikut memakai pemetaan terbaru.
 INSERT INTO dw.dim_kelompok_umur (kelompok_umur_key, label_umur, umur_min, umur_max, kelompok_key, ketepatan_pemetaan) VALUES
-    (1,  '0-4',   0,  4,    2, 'tepat'),
+    (1,  '0-4',   0,  4,    2, 'pendekatan'),
     (2,  '5-9',   5,  9,    3, 'pendekatan'),
-    (3,  '10-14', 10, 14,   3, 'tepat'),
+    (3,  '10-14', 10, 14,   3, 'pendekatan'),
     (4,  '15-19', 15, 19,   3, 'pendekatan'),
-    (5,  '20-24', 20, 24,   4, 'tepat'),
-    (6,  '25-29', 25, 29,   4, 'tepat'),
-    (7,  '30-34', 30, 34,   4, 'tepat'),
-    (8,  '35-39', 35, 39,   4, 'tepat'),
-    (9,  '40-44', 40, 44,   4, 'tepat'),
-    (10, '45-49', 45, 49,   4, 'tepat'),
-    (11, '50-54', 50, 54,   4, 'tepat'),
-    (12, '55-59', 55, 59,   4, 'tepat'),
+    (5,  '20-24', 20, 24,   4, 'pendekatan'),
+    (6,  '25-29', 25, 29,   4, 'pendekatan'),
+    (7,  '30-34', 30, 34,   4, 'pendekatan'),
+    (8,  '35-39', 35, 39,   4, 'pendekatan'),
+    (9,  '40-44', 40, 44,   4, 'pendekatan'),
+    (10, '45-49', 45, 49,   4, 'pendekatan'),
+    (11, '50-54', 50, 54,   4, 'pendekatan'),
+    (12, '55-59', 55, 59,   4, 'pendekatan'),
     (13, '60-64', 60, 64,   5, 'tepat'),
     (14, '65-69', 65, 69,   5, 'tepat'),
     (15, '70-74', 70, 74,   5, 'tepat'),
     (16, '>=75',  75, NULL, 5, 'tepat')
-ON CONFLICT (kelompok_umur_key) DO NOTHING;
+ON CONFLICT (kelompok_umur_key) DO UPDATE SET
+    label_umur = EXCLUDED.label_umur, umur_min = EXCLUDED.umur_min, umur_max = EXCLUDED.umur_max,
+    kelompok_key = EXCLUDED.kelompok_key, ketepatan_pemetaan = EXCLUDED.ketepatan_pemetaan;

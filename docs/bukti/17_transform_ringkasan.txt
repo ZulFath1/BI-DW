@@ -1,0 +1,62 @@
+# Bukti 17 — ringkasan transform (dq.dq_log tahap transform), batch manual__2026-11-15T15:32:55.833869+00:00
+ kode_aturan |  tingkat   | n  
+-------------+------------+----
+ K16         | PERINGATAN |  1
+ T02         | INFO       |  1
+ T05         | INFO       | 14
+ T06         | INFO       |  1
+ T06         | PERINGATAN |  1
+ T07         | INFO       |  1
+ T08         | INFO       |  1
+ T09         | INFO       |  8
+ T12         | INFO       |  6
+ T12         | PERINGATAN |  1
+ T13         | INFO       |  1
+ T13         | PERINGATAN |  2
+ T14         | INFO       |  4
+ T14         | PERINGATAN |  1
+ T15         | INFO       |  1
+ T16         | INFO       |  1
+ T17         | INFO       |  1
+ T17         | PERINGATAN |  1
+ T18         | INFO       |  2
+(19 rows)
+
+ kode_aturan |  tingkat   |                                                                                           keterangan                                                                                            
+-------------+------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ K16         | PERINGATAN | label kelompok umur di buku berisi angka; kelompok umur diambil dari urutan baris; validasi {'tepat 16 baris': True, 'L+P=Jumlah tiap baris': True, 'Σ = total kelurahan': True} lolos
+ T02         | INFO       | ringkasan per tahun: baris = {2023: 23700, 2024: 23700, 2025: 29220, 2026: 29400}
+ T05         | INFO       | 490 posyandu unik, 503 versi (SCD2); per tahun: {2023: 395, 2024: 395, 2025: 487, 2026: 490}
+ T06         | PERINGATAN | Sasaran kosong tetapi metrik lain terisi: status bukan Terlapor (definisi T06), nilai lain tetap dimuat apa adanya; per tahun {2023: 355, 2024: 76, 2025: 442, 2026: 101}
+ T06         | INFO       | ringkasan per tahun: status = {2023: {1: 11617, 2: 12083, 3: 0, 4: 0}, 2024: {1: 12839, 2: 10861, 3: 0, 4: 0}, 2025: {1: 28037, 2: 1183, 3: 0, 4: 0}, 2026: {1: 19232, 2: 0, 3: 2818, 4: 7350}}
+ T07         | INFO       | ringkasan per tahun: T07 = {2023: 12, 2024: 18, 2025: 92, 2026: 48}
+ T08         | INFO       | ringkasan per tahun: T08 = {2023: 624, 2024: 87, 2025: 9, 2026: 0}
+ T09         | INFO       | ringkasan per tahun: anomali = {2023: 284, 2024: 333, 2025: 826, 2026: 630}
+ T09         | INFO       | ringkasan per tahun: A1 = {2023: 0, 2024: 37, 2025: 0, 2026: 1}
+ T09         | INFO       | ringkasan per tahun: A2 = {2023: 223, 2024: 277, 2025: 262, 2026: 282}
+ T09         | INFO       | ringkasan per tahun: A3 = {2023: 5, 2024: 7, 2025: 523, 2026: 33}
+ T09         | INFO       | ringkasan per tahun: cakupan>sasaran = {2023: 36, 2024: 50, 2025: 84, 2026: 163}
+ T09         | INFO       | ringkasan per tahun: negatif = {2023: 1, 2024: 0, 2025: 5, 2026: 71}
+ T09         | INFO       | ringkasan per tahun: sasaran0_cakupan>0 = {2023: 0, 2024: 9, 2025: 5, 2026: 114}
+ T09         | INFO       | ringkasan per tahun: selisih_persen = {2023: 22, 2024: 3, 2025: 5, 2026: 90}
+ T12         | INFO       | penilaian 25 keterampilan di luar Ya/Tidak -> 'Tidak valid'
+ T12         | INFO       | penilaian 25 keterampilan di luar Ya/Tidak -> 'Tidak valid'
+ T12         | INFO       | penilaian 25 keterampilan di luar Ya/Tidak -> 'Tidak valid'
+ T12         | INFO       | penilaian 25 keterampilan di luar Ya/Tidak -> 'Tidak valid'
+ T12         | INFO       | penilaian 25 keterampilan di luar Ya/Tidak -> 'Tidak valid'
+ T12         | PERINGATAN | pendidikan tidak dikenali; diseragamkan menjadi 'Tidak valid'
+ T12         | INFO       | pasangan kader-posyandu ganda: 6 pasangan, 12 baris; tidak valid: {'penilaian': 5, 'pendidikan': 1}
+ T13         | INFO       | staging 2545 = fakta 2542 + dihapus T13 2 + tidak terpetakan 1 + lainnya 0
+ T14         | INFO       | 1 baris berisi '-' pada kolom jumlah alat; dimuat sebagai NULL
+ T14         | INFO       | rekonsiliasi 490 baris vs baris total: selisih 0 di 20 kolom
+ T14         | INFO       | tensimeter tidak dimuat ke fakta (data tidak tersedia): kolom 'Ada' terisi 0 baris, kolom 'Tdk Ada' bernilai bukan 0 pada 0 baris
+ T14         | INFO       | pemetaan nama posyandu Antrop: {'kunci': 481, 'manual': 9}; snapshot waktu_key 202606
+ T14         | PERINGATAN | posyandu kader tidak terpetakan; baris ditahan (tidak masuk fakta): kelurahan/nama posyandu kosong atau 'N/A'
+ T15         | INFO       | bulan 2026 yang sudah berisi data: [1, 2, 3, 4, 5, 6, 7, 8, 9]; bulan lain berstatus Belum dilaporkan (tidak dimuat sebagai 0)
+ T16         | INFO       | daftar kelurahan resmi dari E2 2025
+ T17         | PERINGATAN | baris Total kelurahan di buku tidak cocok dengan Σ 16 kelompok umur (Σ L=5396, Σ P=5225, Σ jumlah=10621; baris Total: L=5.416, P=50,81, jumlah=49,19); fakta memakai 16 baris data
+ T17         | INFO       | baris total kelurahan tanpa label 'Total' di buku (dikenali saat staging): hal. 21 tabel 0 baris 54: baris total tanpa label 'Total' setelah baris >=75; diperlakukan sebagai total wilayah
+ T18         | INFO       | rekonsiliasi total 2024: cocok (stunting 1432)
+ T18         | INFO       | rekonsiliasi total 2025: cocok (stunting 1531)
+(34 rows)
+

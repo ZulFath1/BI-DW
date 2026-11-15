@@ -64,3 +64,32 @@ CREATE TABLE IF NOT EXISTS dq.ingest_manifest (
     waktu_ambil    timestamptz NOT NULL,
     UNIQUE (batch_id, sumber)
 );
+
+-- ---------------------------------------------------------------------
+-- Tambahan minggu 23–29 Nov (idempotent untuk database yang sudah ada)
+-- ---------------------------------------------------------------------
+-- ingest_web: perubahan sumber web ditentukan dari checksum ISI TABEL yang diekstrak,
+-- bukan dari HTML mentah (HTML memuat token formulir yang berubah setiap diakses).
+-- 'tidak_berubah' = tabel sama dengan pengambilan sebelumnya; tidak ada objek baru di data
+-- lake, baris manifest menunjuk ke objek lama (lineage tetap utuh).
+ALTER TABLE dq.ingest_manifest ADD COLUMN IF NOT EXISTS sha256_isi_tabel char(64);
+ALTER TABLE dq.ingest_manifest DROP CONSTRAINT IF EXISTS ingest_manifest_status_unggah_check;
+ALTER TABLE dq.ingest_manifest ADD CONSTRAINT ingest_manifest_status_unggah_check
+    CHECK (status_unggah IN ('diunggah', 'sudah_ada', 'tidak_berubah'));
+COMMENT ON COLUMN dq.ingest_manifest.sha256_isi_tabel IS
+    'SHA-256 isi tabel hasil ekstraksi (JSON kanonik); dipakai ingest_web untuk menentukan berubah/tidak';
+
+-- Hasil quality gate Q01–Q09 per batch (ringkasan; detail temuan tetap di dq_log).
+CREATE TABLE IF NOT EXISTS dq.quality_result (
+    qr_id          bigserial   PRIMARY KEY,
+    batch_id       text        NOT NULL,
+    kode_cek       text        NOT NULL,             -- Q01..Q09
+    fase           text        NOT NULL CHECK (fase IN ('sebelum_load', 'dalam_load')),
+    is_kritis      boolean     NOT NULL,
+    lulus          boolean     NOT NULL,
+    nilai          text,                             -- hasil terukur
+    harapan        text,                             -- nilai yang diharapkan
+    keterangan     text,
+    dicatat_pada   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_quality_result_batch ON dq.quality_result (batch_id, kode_cek);

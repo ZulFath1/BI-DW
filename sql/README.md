@@ -3,11 +3,13 @@
 | Folder/berkas | Fungsi |
 |---|---|
 | `init/00_init.sh` | Dijalankan otomatis saat volume PostgreSQL pertama kali dibuat: database DWH & Airflow, schema `stg`, `curated`, `dq`, `dw`, `mart`, role `etl_user`, `dashboard_ro` (read-only), `airflow_user` |
-| `ddl/01_dq.sql` | `dq.batch_log`, `dq.dq_log`, `dq.quarantine`, `dq.ingest_manifest` |
+| `ddl/01_dq.sql` | `dq.batch_log`, `dq.dq_log`, `dq.quarantine`, `dq.ingest_manifest` (+ `sha256_isi_tabel`), `dq.quality_result` |
 | `ddl/02_stg.sql` | Tabel staging (nilai asli + nomor baris sumber) |
 | `ddl/03_dw.sql` | Galaxy schema: 7 dimensi, 5 fakta, PK/FK/surrogate key |
-| `ddl/04_dw_seed.sql` | Isi dimensi konstanta: `dim_waktu` (48), `dim_kelompok_sasaran` (5), `dim_status_data` (4), `dim_alat` (11), `dim_kelompok_umur` (16) |
+| `ddl/04_dw_seed.sql` | Isi dimensi konstanta: `dim_waktu` (48 + anggota "2026, bulan tidak diketahui"), `dim_kelompok_sasaran` (5), `dim_status_data` (4), `dim_alat` (11), `dim_kelompok_umur` (16, pemetaan K20) |
 | `ddl/05_dw_view.sql` | View `dw.v_rasio_stunting_balita` (T19) |
+| `ddl/06_curated.sql` | Schema `curated`: hasil transform (kunci natural) + tabel pemetaan nama posyandu |
+| `validasi/03_dwh.sql` | Validasi DWH terhadap angka acuan (D01–D13) |
 | `validasi/01_staging.sql` | Query validasi hasil staging (jumlah baris, rekonsiliasi, privasi) |
 | `validasi/02_uji_view_rasio.sql` | Uji logika view rasio dengan data staging di dalam transaksi yang di-ROLLBACK |
 

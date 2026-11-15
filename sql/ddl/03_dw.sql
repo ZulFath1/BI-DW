@@ -175,3 +175,41 @@ CREATE TABLE IF NOT EXISTS dw.fact_stunting_kelurahan (
     PRIMARY KEY (kelurahan_key, waktu_key)
 );
 COMMENT ON TABLE dw.fact_stunting_kelurahan IS 'E2 Dinkes (Satu Data): jumlah balita stunting/wasting/underweight per kelurahan per tahun';
+
+-- =====================================================================
+-- Tambahan minggu 23–29 Nov (keputusan K16, K21, dan grain kader; lihat docs/KEPUTUSAN.md).
+-- ALTER ... IF [NOT] EXISTS agar database yang sudah dibuat ikut diperbarui (idempotent).
+-- =====================================================================
+
+-- K21: dim_waktu memuat anggota "bulan tidak diketahui" per tahun (waktu_key YYYY00) untuk
+-- snapshot yang sumbernya hanya menyebut tahun (sheet Kader: "Tahun 2026"). Anggota ini tidak
+-- punya tanggal/bulan/semester/kuartal, sehingga kolom tersebut boleh NULL. Bulan Desember 2026
+-- TIDAK dipakai karena bulan itu belum terjadi saat data dibuat.
+ALTER TABLE dw.dim_waktu ALTER COLUMN tanggal_awal DROP NOT NULL;
+ALTER TABLE dw.dim_waktu ALTER COLUMN semester     DROP NOT NULL;
+ALTER TABLE dw.dim_waktu ALTER COLUMN kuartal      DROP NOT NULL;
+ALTER TABLE dw.dim_waktu ALTER COLUMN bulan        DROP NOT NULL;
+ALTER TABLE dw.dim_waktu ADD COLUMN IF NOT EXISTS is_bulan_diketahui boolean NOT NULL DEFAULT true;
+ALTER TABLE dw.dim_waktu DROP CONSTRAINT IF EXISTS ck_dim_waktu_anggota;
+ALTER TABLE dw.dim_waktu ADD CONSTRAINT ck_dim_waktu_anggota CHECK (
+    (is_bulan_diketahui AND tanggal_awal IS NOT NULL AND bulan IS NOT NULL AND semester IS NOT NULL AND kuartal IS NOT NULL)
+    OR (NOT is_bulan_diketahui AND tanggal_awal IS NULL AND bulan IS NULL AND waktu_key % 100 = 0));
+COMMENT ON TABLE dw.dim_waktu IS
+    '48 bulan (2023-01 s.d. 2026-12) + anggota "bulan tidak diketahui" (YYYY00) untuk snapshot tanpa bulan (K21)';
+
+-- K21 + grain kader: satu baris = satu baris kader per posyandu pada snapshot (surrogate key
+-- kader_snapshot_key). kader_kode hanya untuk mendeteksi pasangan kader-posyandu ganda; kode
+-- BUKAN identitas orang (nama sama -> kode sama; lihat K19).
+ALTER TABLE dw.fact_kader_snapshot ADD COLUMN IF NOT EXISTS periode_snapshot text;
+COMMENT ON TABLE dw.fact_kader_snapshot IS
+    'Grain: satu baris kader per posyandu per snapshot (kader_snapshot_key). kader_kode bukan identitas orang; tanpa nama/alamat (Q06)';
+COMMENT ON COLUMN dw.fact_kader_snapshot.kader_kode IS
+    'Pseudonim HMAC dari nama; hanya untuk mendeteksi pasangan ganda. Bukan identitas unik orang (K19)';
+COMMENT ON COLUMN dw.fact_kader_snapshot.periode_snapshot IS
+    'Periode snapshot sesuai sumber (mis. ''Tahun 2026''); waktu_key menunjuk anggota bulan tidak diketahui';
+
+-- K16: penanda kualitas baris penduduk (mis. 'label umur dari urutan baris' untuk Kelayan Tengah).
+ALTER TABLE dw.fact_penduduk_kelurahan ADD COLUMN IF NOT EXISTS flag_kualitas text;
+
+-- Lineage fakta alat ke baris sumber dan penanda nilai '-' (T03/T14).
+ALTER TABLE dw.fact_alat_snapshot ADD COLUMN IF NOT EXISTS flag_kualitas text;

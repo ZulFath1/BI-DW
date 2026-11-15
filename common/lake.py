@@ -75,7 +75,7 @@ class HasilUnggah:
     object_key: str
     sha256: str
     ukuran_byte: int
-    status_unggah: str  # 'diunggah' | 'sudah_ada'
+    status_unggah: str  # 'diunggah' | 'sudah_ada' | 'tidak_berubah'
 
 
 def simpan_objek_raw(s3, sumber: str, nama_berkas: str, isi: bytes, content_type: str,
@@ -119,7 +119,8 @@ def simpan_objek_raw(s3, sumber: str, nama_berkas: str, isi: bytes, content_type
 
 
 def catat_manifest(batch_id: str, sumber: str, cara_ambil: str, lokasi_asal: str, hasil: HasilUnggah,
-                   content_type: str, waktu_ambil: datetime, http_status: int | None = None) -> int:
+                   content_type: str, waktu_ambil: datetime, http_status: int | None = None,
+                   sha256_isi_tabel: str | None = None) -> int:
     """Mencatat pengambilan ke dq.ingest_manifest. Idempotent per (batch_id, sumber):
     bila task di-retry pada batch yang sama, baris lama diperbarui."""
     conn = buka_koneksi(autocommit=True)
@@ -129,18 +130,19 @@ def catat_manifest(batch_id: str, sumber: str, cara_ambil: str, lokasi_asal: str
                 """
                 INSERT INTO dq.ingest_manifest
                     (batch_id, sumber, cara_ambil, lokasi_asal, bucket, object_key, sha256,
-                     ukuran_byte, content_type, http_status, status_unggah, waktu_ambil)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     ukuran_byte, content_type, http_status, status_unggah, waktu_ambil, sha256_isi_tabel)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (batch_id, sumber) DO UPDATE SET
                     cara_ambil = EXCLUDED.cara_ambil, lokasi_asal = EXCLUDED.lokasi_asal,
                     bucket = EXCLUDED.bucket, object_key = EXCLUDED.object_key,
                     sha256 = EXCLUDED.sha256, ukuran_byte = EXCLUDED.ukuran_byte,
                     content_type = EXCLUDED.content_type, http_status = EXCLUDED.http_status,
-                    status_unggah = EXCLUDED.status_unggah, waktu_ambil = EXCLUDED.waktu_ambil
+                    status_unggah = EXCLUDED.status_unggah, waktu_ambil = EXCLUDED.waktu_ambil,
+                    sha256_isi_tabel = EXCLUDED.sha256_isi_tabel
                 RETURNING manifest_id
                 """,
                 (batch_id, sumber, cara_ambil, lokasi_asal, hasil.bucket, hasil.object_key, hasil.sha256,
-                 hasil.ukuran_byte, content_type, http_status, hasil.status_unggah, waktu_ambil),
+                 hasil.ukuran_byte, content_type, http_status, hasil.status_unggah, waktu_ambil, sha256_isi_tabel),
             )
             return cur.fetchone()[0]
     finally:
@@ -183,3 +185,30 @@ def baca_objek_batch(batch_id: str, sumber: str) -> ObjekManifest:
     if sha256_hex(isi) != sha:
         raise DataKorupError(f"checksum objek {bucket}/{key} tidak cocok dengan manifest {manifest_id}")
     return ObjekManifest(manifest_id, sumber, bucket, key, sha, isi)
+
+
+def manifest_terakhir_isi_tabel(sumber: str, kecuali_batch: str) -> dict | None:
+    """Pengambilan terakhir (batch lain) yang punya checksum isi tabel, untuk ingest_web."""
+    conn = buka_koneksi()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT bucket, object_key, sha256, ukuran_byte, sha256_isi_tabel FROM dq.ingest_manifest "
+                "WHERE sumber = %s AND batch_id <> %s AND sha256_isi_tabel IS NOT NULL "
+                "ORDER BY waktu_ambil DESC, manifest_id DESC LIMIT 1",
+                (sumber, kecuali_batch),
+            )
+            r = cur.fetchone()
+    finally:
+        conn.close()
+    if r is None:
+        return None
+    return dict(zip(["bucket", "object_key", "sha256", "ukuran_byte", "sha256_isi_tabel"], r))
+
+
+def objek_ada(s3, bucket: str, key: str, sha: str) -> bool:
+    """True bila objek masih ada di data lake dengan checksum yang sama."""
+    try:
+        return s3.head_object(Bucket=bucket, Key=key).get("Metadata", {}).get("sha256") == sha
+    except ClientError:
+        return False
