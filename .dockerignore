@@ -1,0 +1,4 @@
+# Build context hanya boleh berisi requirements.txt (whitelist).
+# Tujuan: data privat (data/), .env, dan .git tidak pernah terkirim ke Docker build.
+*
+!requirements.txt

@@ -1,0 +1,32 @@
+# Eksekusi pipeline minggu 1 (schema + ingestion + staging) — 2026-11-15 20:23 waktu laptop
+# Perintah: docker compose exec airflow-scheduler python -m etl.cli semua --batch-id manual__20261115_minggu1
+
+2026-11-15 12:23:49,350 INFO __main__: batch_id = manual__20261115_minggu1
+2026-11-15 12:23:50,176 INFO etl.schema: menjalankan 01_dq.sql
+2026-11-15 12:23:50,183 INFO etl.schema: menjalankan 02_stg.sql
+2026-11-15 12:23:50,188 INFO etl.schema: menjalankan 03_dw.sql
+2026-11-15 12:23:50,195 INFO etl.schema: menjalankan 04_dw_seed.sql
+2026-11-15 12:23:50,203 INFO etl.schema: menjalankan 05_dw_view.sql
+2026-11-15 12:23:50,224 INFO common.batch: [manual__20261115_minggu1] init_schema mulai (log_id=26)
+2026-11-15 12:23:50,226 INFO common.batch: [manual__20261115_minggu1] init_schema SUKSES: 5 baris. DDL diterapkan: 01_dq.sql, 02_stg.sql, 03_dw.sql, 04_dw_seed.sql, 05_dw_view.sql
+2026-11-15 12:23:50,237 INFO common.batch: [manual__20261115_minggu1] ingest_internal_laporan_posyandu mulai (log_id=27)
+2026-11-15 12:23:50,407 INFO common.lake: objek raw/internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_Posyandu.xlsx sudah ada dengan isi sama — tidak diunggah ulang
+2026-11-15 12:23:50,421 INFO common.batch: [manual__20261115_minggu1] ingest_internal_laporan_posyandu SUKSES: 1 baris. raw/internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_Posyandu.xlsx (sudah_ada), 2524269 byte, sha256 f21c45b8000f…
+2026-11-15 12:23:50,433 INFO common.batch: [manual__20261115_minggu1] ingest_e1_disdukcapil_agregat_2025s2 mulai (log_id=28)
+2026-11-15 12:23:50,539 INFO common.lake: objek raw/e1_disdukcapil_agregat_2025s2/2026-11-15/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf sudah ada dengan isi sama — tidak diunggah ulang
+2026-11-15 12:23:50,553 INFO common.batch: [manual__20261115_minggu1] ingest_e1_disdukcapil_agregat_2025s2 SUKSES: 1 baris. raw/e1_disdukcapil_agregat_2025s2/2026-11-15/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf (sudah_ada), 9108359 byte, sha256 2382f1bc0c8a…
+2026-11-15 12:23:50,566 INFO common.batch: [manual__20261115_minggu1] ingest_web mulai (log_id=29)
+2026-11-15 12:23:50,821 INFO common.lake: isi berbeda dari objek lama pada tanggal yang sama — disimpan sebagai e2_stunting_2024/2026-11-15/202350_stunting_2024.html
+2026-11-15 12:23:51,078 INFO common.lake: isi berbeda dari objek lama pada tanggal yang sama — disimpan sebagai e2_stunting_2025/2026-11-15/202350_stunting_2025.html
+2026-11-15 12:23:51,108 INFO common.batch: [manual__20261115_minggu1] ingest_web SUKSES: 2 baris. 2024: web -> e2_stunting_2024/2026-11-15/202350_stunting_2024.html (diunggah); 2025: web -> e2_stunting_2025/2026-11-15/202350_stunting_2025.html (diunggah)
+2026-11-15 12:23:51,120 INFO common.batch: [manual__20261115_minggu1] staging_laporan mulai (log_id=30)
+2026-11-15 12:24:00,823 INFO common.batch: [manual__20261115_minggu1] staging_laporan SUKSES: 106020 baris. posyandu per sheet: 2023=395, 2024=395, 2025=487, 2026=490
+2026-11-15 12:24:00,858 INFO common.batch: [manual__20261115_minggu1] staging_antrop mulai (log_id=31)
+2026-11-15 12:24:01,203 INFO common.batch: [manual__20261115_minggu1] staging_antrop SUKSES: 491 baris. 490 baris posyandu + 1 baris total; cut off : JUNI 2026
+2026-11-15 12:24:01,214 INFO common.batch: [manual__20261115_minggu1] staging_kader mulai (log_id=32)
+2026-11-15 12:24:01,829 INFO common.batch: [manual__20261115_minggu1] staging_kader SUKSES: 2545 baris. 2545 kader; nama kosong 0; kolom tanpa header berisi: 1
+2026-11-15 12:24:01,844 INFO common.batch: [manual__20261115_minggu1] staging_pdf mulai (log_id=33)
+2026-11-15 12:24:18,272 INFO common.batch: [manual__20261115_minggu1] staging_pdf SUKSES: 992 baris. 992 baris; 52 kelurahan; peringatan bentuk: 16
+2026-11-15 12:24:18,284 INFO common.batch: [manual__20261115_minggu1] staging_web mulai (log_id=34)
+2026-11-15 12:24:18,438 INFO common.batch: [manual__20261115_minggu1] staging_web SUKSES: 106 baris. baris kelurahan: 2024=52, 2025=52
+SELESAI batch_id=manual__20261115_minggu1

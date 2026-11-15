@@ -1,0 +1,63 @@
+# Cek database, schema, dan role — 2026-11-15 18:35 WITA (UTC+8)
+# Dijalankan: docker compose exec postgres psql ... (tanpa menampilkan kata sandi)
+
+== 1. Daftar database
+  database   |   pemilik    
+-------------+--------------
+ airflow     | airflow_user
+ postgres    | postgres
+ posyandu_dw | etl_user
+(3 rows)
+
+== 2. Schema di database DWH
+ schema  |      pemilik      
+---------+-------------------
+ curated | etl_user
+ dq      | etl_user
+ dw      | etl_user
+ mart    | etl_user
+ public  | pg_database_owner
+ stg     | etl_user
+(6 rows)
+
+== 3. Role login (tanpa superuser bawaan)
+     role     | login | superuser |            pengaturan            
+--------------+-------+-----------+----------------------------------
+ airflow_user | t     | f         | 
+ dashboard_ro | t     | f         | default_transaction_read_only=on
+ etl_user     | t     | f         | 
+(3 rows)
+
+== 4. Hak akses schema untuk dashboard_ro
+ schema  | usage | create 
+---------+-------+--------
+ stg     | f     | f
+ curated | f     | f
+ dq      | f     | f
+ dw      | t     | f
+ mart    | t     | f
+(5 rows)
+
+== 5. Uji read-only: etl_user membuat tabel uji di dw, dashboard_ro membaca lalu mencoba menulis
+CREATE TABLE
+INSERT 0 1
+-- SELECT oleh dashboard_ro (harus berhasil):
+ baris 
+-------
+     1
+(1 row)
+
+-- INSERT oleh dashboard_ro (harus DITOLAK):
+ERROR:  cannot execute INSERT in a read-only transaction
+-- CREATE TABLE di mart oleh dashboard_ro (harus DITOLAK):
+ERROR:  cannot execute CREATE TABLE in a read-only transaction
+-- Akses ke database airflow oleh dashboard_ro (harus DITOLAK):
+psql: error: connection to server at "localhost" (::1), port 5432 failed: FATAL:  permission denied for database "airflow"
+DETAIL:  User does not have CONNECT privilege.
+-- Hapus tabel uji (oleh etl_user):
+DROP TABLE
+
+== 6. Uji lapis GRANT (read-only sesi dimatikan; INSERT tetap harus DITOLAK oleh hak akses)
+SET
+ERROR:  permission denied for table _uji_akses
+DROP TABLE

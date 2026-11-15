@@ -1,0 +1,13 @@
+# docker stats --no-stream (hanya container project posyandu) — 2026-11-15 18:35 WITA (UTC+8)
+# Kondisi: stack baru menyala, belum ada DAG/pipeline yang berjalan (idle).
+
+NAME                               CPU %     MEM USAGE / LIMIT     MEM %
+posyandu-airflow-apiserver-1       0.43%     581.4MiB / 15.55GiB   3.65%
+posyandu-airflow-dag-processor-1   0.83%     189.2MiB / 15.55GiB   1.19%
+posyandu-airflow-scheduler-1       3.69%     311.9MiB / 15.55GiB   1.96%
+posyandu-dashboard-1               0.38%     68.4MiB / 15.55GiB    0.43%
+posyandu-datalake-1                0.03%     78.24MiB / 15.55GiB   0.49%
+posyandu-postgres-1                1.60%     56.57MiB / 15.55GiB   0.36%
+
+# Total memori container posyandu:
+1286 MiB (~1.26 GiB)

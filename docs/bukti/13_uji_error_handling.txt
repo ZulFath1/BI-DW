@@ -1,0 +1,7 @@
+# Uji error handling — python -m tests.uji_error_handling — 2026-11-15 20:24
+[LULUS] E1: 3 percobaan dengan jeda 1 s & 2 s, lalu OperationalError dilempar (task gagal -> retry Airflow)
+[LULUS] E2: SumberTidakTersediaError; batch_log=[('GAGAL',)]; WEB01=1; pesan: E2 2025: portal gagal setelah 3 percobaan: ConnectionError: HTTPConnectionPool(host='127.0.0.1', port=9): Max 
+[LULUS] E3: manifest=[('fallback_manual', 'eksternal/stunting_2025.html')]; isi fallback ter-parse 52 kelurahan
+[LULUS] E4: DataKorupError; quarantine=1; staging sebelum=(106020, 'manual__20261115_minggu1') sesudah=(106020, 'manual__20261115_minggu1') (tidak berubah)
+[LULUS] E5: struktur asli lolos; struktur bergeser ditolak: sheet 2025: struktur header tidak sesuai (373 beda), contoh: ["F: bulan 'None'", "F: kelompok 'None'", "F: metrik 'None'
+RINGKASAN: 5/5 skenario lulus

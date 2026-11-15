@@ -1,0 +1,110 @@
+# Schema DWH (dw) — 2026-11-15 20:25
+== Tabel & view di schema dw
+                  List of relations
+ Schema |          Name           | Type  |  Owner   
+--------+-------------------------+-------+----------
+ dw     | dim_alat                | table | etl_user
+ dw     | dim_kelompok_sasaran    | table | etl_user
+ dw     | dim_kelompok_umur       | table | etl_user
+ dw     | dim_kelurahan           | table | etl_user
+ dw     | dim_posyandu            | table | etl_user
+ dw     | dim_status_data         | table | etl_user
+ dw     | dim_waktu               | table | etl_user
+ dw     | fact_alat_snapshot      | table | etl_user
+ dw     | fact_kader_snapshot     | table | etl_user
+ dw     | fact_kunjungan_bulanan  | table | etl_user
+ dw     | fact_penduduk_kelurahan | table | etl_user
+ dw     | fact_stunting_kelurahan | table | etl_user
+(12 rows)
+
+                 List of relations
+ Schema |          Name           | Type |  Owner   
+--------+-------------------------+------+----------
+ dw     | v_rasio_stunting_balita | view | etl_user
+(1 row)
+
+== Jumlah baris dimensi konstanta (harap 48, 5, 4, 11, 16; tabel lain diisi tahap transform/load)
+        tabel         | count 
+----------------------+-------
+ dim_waktu            |    48
+ dim_kelompok_sasaran |     5
+ dim_status_data      |     4
+ dim_alat             |    11
+ dim_kelompok_umur    |    16
+(5 rows)
+
+== Relasi foreign key
+          tabel          |       kolom       |       ke_tabel       
+-------------------------+-------------------+----------------------
+ dim_kelompok_umur       | kelompok_key      | dim_kelompok_sasaran
+ dim_posyandu            | kelurahan_key     | dim_kelurahan
+ fact_alat_snapshot      | alat_key          | dim_alat
+ fact_alat_snapshot      | posyandu_key      | dim_posyandu
+ fact_alat_snapshot      | waktu_key         | dim_waktu
+ fact_kader_snapshot     | posyandu_key      | dim_posyandu
+ fact_kader_snapshot     | waktu_key         | dim_waktu
+ fact_kunjungan_bulanan  | kelompok_key      | dim_kelompok_sasaran
+ fact_kunjungan_bulanan  | posyandu_key      | dim_posyandu
+ fact_kunjungan_bulanan  | status_key        | dim_status_data
+ fact_kunjungan_bulanan  | waktu_key         | dim_waktu
+ fact_penduduk_kelurahan | kelompok_umur_key | dim_kelompok_umur
+ fact_penduduk_kelurahan | kelurahan_key     | dim_kelurahan
+ fact_penduduk_kelurahan | waktu_key         | dim_waktu
+ fact_stunting_kelurahan | kelurahan_key     | dim_kelurahan
+ fact_stunting_kelurahan | waktu_key         | dim_waktu
+(16 rows)
+
+== Hak akses dashboard_ro di schema dw
+       table_name        |  hak   
+-------------------------+--------
+ dim_alat                | SELECT
+ dim_kelompok_sasaran    | SELECT
+ dim_kelompok_umur       | SELECT
+ dim_kelurahan           | SELECT
+ dim_posyandu            | SELECT
+ dim_status_data         | SELECT
+ dim_waktu               | SELECT
+ fact_alat_snapshot      | SELECT
+ fact_kader_snapshot     | SELECT
+ fact_kunjungan_bulanan  | SELECT
+ fact_penduduk_kelurahan | SELECT
+ fact_stunting_kelurahan | SELECT
+ v_rasio_stunting_balita | SELECT
+(13 rows)
+
+== dim_alat dan dim_kelompok_umur
+ alat_key |      kode_alat       |        nama_alat        | kategori_standar |  ketersediaan_data  |     kolom_sumber     
+----------+----------------------+-------------------------+------------------+---------------------+----------------------
+        1 | timbangan_bayi_std   | Timbangan bayi digital  | Standar          | tersedia            | timbangan_bayi_std
+        2 | timbangan_bayi_tstd  | Timbangan bayi digital  | Tidak standar    | tersedia            | timbangan_bayi_tstd
+        3 | panjang_bayi_std     | Pengukur panjang bayi   | Standar          | tersedia            | panjang_bayi_std
+        4 | panjang_bayi_tstd    | Pengukur panjang bayi   | Tidak standar    | tersedia            | panjang_bayi_tstd
+        5 | timbangan_badan_std  | Timbangan badan digital | Standar          | tersedia            | timbangan_badan_std
+        6 | timbangan_badan_tstd | Timbangan badan digital | Tidak standar    | tersedia            | timbangan_badan_tstd
+        7 | tinggi_badan_std     | Pengukur tinggi badan   | Standar          | tersedia            | tinggi_badan_std
+        8 | tinggi_badan_tstd    | Pengukur tinggi badan   | Tidak standar    | tersedia            | tinggi_badan_tstd
+        9 | lila_std             | Pengukur LILA/LP/LK     | Standar          | tersedia            | lila_std
+       10 | lila_tstd            | Pengukur LILA/LP/LK     | Tidak standar    | tersedia            | lila_tstd
+       11 | tensimeter           | Tensimeter digital      |                  | data tidak tersedia | tensimeter
+(11 rows)
+
+ kelompok_umur_key | label_umur | umur_min | umur_max | kelompok_key | ketepatan_pemetaan |      nama_kelompok      
+-------------------+------------+----------+----------+--------------+--------------------+-------------------------
+                 1 | 0-4        |        0 |        4 |            2 | tepat              | Bayi Balita
+                 2 | 5-9        |        5 |        9 |            3 | pendekatan         | Usia Sekolah dan Remaja
+                 3 | 10-14      |       10 |       14 |            3 | tepat              | Usia Sekolah dan Remaja
+                 4 | 15-19      |       15 |       19 |            3 | pendekatan         | Usia Sekolah dan Remaja
+                 5 | 20-24      |       20 |       24 |            4 | tepat              | Usia Produktif
+                 6 | 25-29      |       25 |       29 |            4 | tepat              | Usia Produktif
+                 7 | 30-34      |       30 |       34 |            4 | tepat              | Usia Produktif
+                 8 | 35-39      |       35 |       39 |            4 | tepat              | Usia Produktif
+                 9 | 40-44      |       40 |       44 |            4 | tepat              | Usia Produktif
+                10 | 45-49      |       45 |       49 |            4 | tepat              | Usia Produktif
+                11 | 50-54      |       50 |       54 |            4 | tepat              | Usia Produktif
+                12 | 55-59      |       55 |       59 |            4 | tepat              | Usia Produktif
+                13 | 60-64      |       60 |       64 |            5 | tepat              | Lansia
+                14 | 65-69      |       65 |       69 |            5 | tepat              | Lansia
+                15 | 70-74      |       70 |       74 |            5 | tepat              | Lansia
+                16 | >=75       |       75 |          |            5 | tepat              | Lansia
+(16 rows)
+

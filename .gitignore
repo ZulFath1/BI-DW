@@ -1,0 +1,98 @@
+# =====================================================================
+# .gitignore — UAS Kecerdasan Bisnis (Big Data) — Posyandu
+# Dataset bersifat privat dan TIDAK di-commit ke GitHub.
+# =====================================================================
+
+# --- Instruksi untuk Claude Code (tidak di-commit) ---
+CLAUDE.md
+CLAUDE.local.md
+.claude/settings.local.json
+
+# --- Dataset (privat) ---
+# Seluruh isi folder data/ diabaikan; hanya .gitkeep dan README yang boleh masuk
+data/*
+!data/.gitkeep
+!data/README.md
+
+# Berkas dataset di mana pun letaknya
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.parquet
+*.feather
+Laporan*Kunjungan*Posyandu*
+DATA*AGREGAT*KEPENDUDUKAN*
+
+# Dokumen (PDF sumber, dokumen UTS, template) tidak di-commit
+*.pdf
+*.docx
+# Pengecualian: laporan final boleh disertakan jika diputuskan pemilik
+!docs/laporan/*.pdf
+
+# --- Dokumen referensi (dokumen UTS, template) ---
+referensi/
+data/referensi/
+
+# Data turunan yang bisa memuat isi dataset (hasil olahan, model, cache)
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+ml/artifacts/
+ml/output/
+
+# --- Kredensial ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Volume Docker / data layanan (MinIO, PostgreSQL, Metabase, Airflow) ---
+volumes/
+minio_data/
+postgres_data/
+pgdata/
+metabase_data/
+metabase.db/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Airflow ---
+airflow/logs/
+logs/
+*.log
+airflow.cfg
+airflow.db
+standalone_admin_password.txt
+webserver_config.py
+
+# --- Backup / dump database (isi data asli) ---
+backup/output/
+backups/
+*.dump
+*.backup
+*.sql.gz
+*.tar.gz
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*

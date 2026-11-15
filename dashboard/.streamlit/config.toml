@@ -1,0 +1,7 @@
+[server]
+address = "0.0.0.0"   # di dalam container; di host tetap hanya 127.0.0.1 (lihat docker-compose.yml)
+port = 8501
+headless = true
+
+[browser]
+gatherUsageStats = false

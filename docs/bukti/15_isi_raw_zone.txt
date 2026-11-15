@@ -1,0 +1,14 @@
+# Isi raw zone data lake (bucket raw) — daftar objek saja, tanpa isi — 2026-11-15 20:25
+versioning: Enabled
+2026-11-15 12:10     9108359  e1_disdukcapil_agregat_2025s2/2026-11-15/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf
+2026-11-15 12:11      224296  e2_stunting_2024/2026-11-15/201103_stunting_2024.html
+2026-11-15 12:13      224296  e2_stunting_2024/2026-11-15/201353_stunting_2024.html
+2026-11-15 12:23      224296  e2_stunting_2024/2026-11-15/202350_stunting_2024.html
+2026-11-15 12:10      224296  e2_stunting_2024/2026-11-15/stunting_2024.html
+2026-11-15 12:11      224325  e2_stunting_2025/2026-11-15/201103_stunting_2025.html
+2026-11-15 12:13      224325  e2_stunting_2025/2026-11-15/201353_stunting_2025.html
+2026-11-15 12:21      224325  e2_stunting_2025/2026-11-15/202107_stunting_2025.html
+2026-11-15 12:23      224325  e2_stunting_2025/2026-11-15/202350_stunting_2025.html
+2026-11-15 12:25      224325  e2_stunting_2025/2026-11-15/202507_stunting_2025.html
+2026-11-15 12:10      224325  e2_stunting_2025/2026-11-15/stunting_2025.html
+2026-11-15 12:10     2524269  internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_Posyandu.xlsx

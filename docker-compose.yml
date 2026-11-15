@@ -1,0 +1,242 @@
+# =====================================================================
+# Docker Compose — UAS Kecerdasan Bisnis (Big Data) — Posyandu
+#
+# Layanan:
+#   postgres               PostgreSQL 16: database DWH (posyandu_dw) + metadata Airflow
+#   datalake               Object storage kompatibel S3 (PGSTY Silo, fork MinIO oleh Pigsty)
+#   datalake-init          Sekali jalan: membuat bucket raw & backup memakai boto3
+#   airflow-init           Sekali jalan: migrasi DB metadata + berkas login Simple Auth Manager
+#   airflow-apiserver      UI web + REST API + Execution API Airflow 3
+#   airflow-scheduler      Penjadwal + LocalExecutor (menjalankan task)
+#   airflow-dag-processor  Parsing berkas DAG (terpisah dari scheduler di Airflow 3)
+#   dashboard              Streamlit, membaca schema dw & mart dengan user read-only
+#
+# Semua port di-bind ke 127.0.0.1 (hanya bisa diakses dari laptop ini).
+# Semua image di-pin ke digest agar build dapat direproduksi.
+# Semua kredensial dibaca dari .env (lihat .env.example).
+# =====================================================================
+
+name: posyandu
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+  image: posyandu-airflow:3.3.2-python3.12
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment: &airflow-common-env
+    # --- Inti Airflow ---
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__PARALLELISM: "4"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?isi AIRFLOW_FERNET_KEY di .env}
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres:5432/${AIRFLOW_DB}
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_API_SECRET_KEY:?isi AIRFLOW_API_SECRET_KEY di .env}
+    AIRFLOW__API__WORKERS: "2"
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?isi AIRFLOW_JWT_SECRET di .env}
+    AIRFLOW__API_AUTH__JWT_ISSUER: "airflow"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # --- Login: Simple Auth Manager (pengguna dari .env, kata sandi di volume airflow_auth) ---
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: ${AIRFLOW_ADMIN_USER:?isi AIRFLOW_ADMIN_USER di .env}:admin
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/auth/simple_auth_manager_passwords.json
+    # --- Kode project dapat di-import dari DAG (common, ingestion, etl, quality, ml) ---
+    PYTHONPATH: /opt/airflow/project
+    # --- Koneksi pipeline ke DWH dan data lake ---
+    DW_HOST: postgres
+    DW_PORT: "5432"
+    DW_DB: ${DW_DB}
+    ETL_USER: ${ETL_USER}
+    ETL_PASSWORD: ${ETL_PASSWORD}
+    LAKE_ENDPOINT: http://datalake:9000
+    LAKE_ROOT_USER: ${LAKE_ROOT_USER}
+    LAKE_ROOT_PASSWORD: ${LAKE_ROOT_PASSWORD}
+    LAKE_BUCKET_RAW: ${LAKE_BUCKET_RAW:-raw}
+    LAKE_BUCKET_BACKUP: ${LAKE_BUCKET_BACKUP:-backup}
+    PSEUDONYM_KEY: ${PSEUDONYM_KEY}
+    DATA_SOURCE_DIR: /opt/airflow/data/source
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./common:/opt/airflow/project/common
+    - ./ingestion:/opt/airflow/project/ingestion
+    - ./etl:/opt/airflow/project/etl
+    - ./quality:/opt/airflow/project/quality
+    - ./ml:/opt/airflow/project/ml
+    - ./tests:/opt/airflow/project/tests
+    - ./sql:/opt/airflow/project/sql:ro
+    - ./data/source:/opt/airflow/data/source:ro
+    - airflow_logs:/opt/airflow/logs
+    - airflow_auth:/opt/airflow/auth
+
+services:
+  postgres:
+    image: postgres:16.13@sha256:5d143123fdf80462d1778cd4f24b9f7ca13c87174bca19141fb194c5a1ebca59
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?isi POSTGRES_SUPERUSER_PASSWORD di .env}
+      POSTGRES_DB: postgres
+      # Dipakai sql/init/00_init.sh saat volume pertama kali dibuat
+      DW_DB: ${DW_DB}
+      ETL_USER: ${ETL_USER}
+      ETL_PASSWORD: ${ETL_PASSWORD}
+      DASHBOARD_USER: ${DASHBOARD_USER}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+      AIRFLOW_DB: ${AIRFLOW_DB}
+      AIRFLOW_DB_USER: ${AIRFLOW_DB_USER}
+      AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  datalake:
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z@sha256:c20d112390b9a9ce8c11b8af95ad35bcaa62f4759663c09c936cd8d2b511f329
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${LAKE_ROOT_USER:?isi LAKE_ROOT_USER di .env}
+      MINIO_ROOT_PASSWORD: ${LAKE_ROOT_PASSWORD:?isi LAKE_ROOT_PASSWORD di .env}
+    volumes:
+      - lake_data:/data
+    ports:
+      - "127.0.0.1:9000:9000"   # S3 API
+      - "127.0.0.1:9001:9001"   # konsol web
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  datalake-init:
+    <<: *airflow-common
+    entrypoint: ["python", "/opt/airflow/project/ingestion/lake_setup.py"]
+    command: []
+    depends_on:
+      datalake:
+        condition: service_healthy
+    restart: "no"
+
+  airflow-init:
+    <<: *airflow-common
+    user: "0:0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -euo pipefail
+        mkdir -p /opt/airflow/logs /opt/airflow/auth
+        echo "Menulis berkas login Simple Auth Manager dari .env"
+        python - <<'PY'
+        import json, os
+        path = os.environ["AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE"]
+        with open(path, "w") as f:
+            json.dump({os.environ["AIRFLOW_ADMIN_USER"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, f)
+        PY
+        chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/logs /opt/airflow/auth
+        chmod 600 /opt/airflow/auth/simple_auth_manager_passwords.json
+        echo "Versi Airflow:"
+        /entrypoint airflow version
+        echo "Migrasi database metadata Airflow"
+        /entrypoint airflow db migrate
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:?isi AIRFLOW_ADMIN_PASSWORD di .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      # Host 8081 (bukan 8080): 8080 sudah dipakai project lain di laptop ini
+      - "127.0.0.1:8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      datalake:
+        condition: service_healthy
+      airflow-apiserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-apiserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    image: posyandu-dashboard:streamlit
+    environment:
+      DW_HOST: postgres
+      DW_PORT: "5432"
+      DW_DB: ${DW_DB}
+      DASHBOARD_USER: ${DASHBOARD_USER}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    ports:
+      - "127.0.0.1:8501:8501"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=5).status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  lake_data:
+  airflow_logs:
+  airflow_auth:

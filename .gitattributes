@@ -1,0 +1,10 @@
+# Paksa akhir baris LF untuk berkas yang dijalankan di container Linux
+# (core.autocrlf=true di Windows akan mengubahnya ke CRLF dan membuat skrip gagal).
+*.sh          text eol=lf
+*.py          text eol=lf
+*.sql         text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.toml        text eol=lf
+Dockerfile    text eol=lf
+.env.example  text eol=lf

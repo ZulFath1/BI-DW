@@ -1,0 +1,48 @@
+# Uji view rasio stunting (transaksi di-ROLLBACK) — sql/validasi/02_uji_view_rasio.sql — 2026-11-15 20:24
+BEGIN
+CREATE TABLE
+INSERT 0 4
+SELECT 104
+SELECT 52
+== U01. Pemetaan nama kelurahan E2 2025 ↔ E1 (harap 52 cocok)
+ e2_2025 | cocok_e1 | tidak_cocok 
+---------+----------+-------------
+      52 |       52 | 
+
+== U02. Alias yang benar-benar terpakai
+ sumber | count 
+--------+-------
+ E2     |     0
+ E1     |     0
+
+INSERT 0 52
+INSERT 0 104
+INSERT 0 104
+== U03. View: tingkat kota dan kecamatan (acuan kota 2025 = 3,85%; 2024 = pendekatan)
+  tingkat  |   nama_kecamatan    | tahun | jumlah_stunting | penduduk_0_4 | rasio_persen | is_pendekatan 
+-----------+---------------------+-------+-----------------+--------------+--------------+---------------
+ kota      |                     |  2024 |            1432 |        39805 |         3.60 | t
+ kecamatan | BANJARMASIN BARAT   |  2024 |             253 |         7708 |         3.28 | t
+ kecamatan | BANJARMASIN SELATAN |  2024 |             445 |        10670 |         4.17 | t
+ kecamatan | BANJARMASIN TENGAH  |  2024 |             184 |         4778 |         3.85 | t
+ kecamatan | BANJARMASIN TIMUR   |  2024 |             259 |         7455 |         3.47 | t
+ kecamatan | BANJARMASIN UTARA   |  2024 |             291 |         9194 |         3.17 | t
+ kota      |                     |  2025 |            1531 |        39805 |         3.85 | f
+ kecamatan | BANJARMASIN BARAT   |  2025 |             328 |         7708 |         4.26 | f
+ kecamatan | BANJARMASIN SELATAN |  2025 |             459 |        10670 |         4.30 | f
+ kecamatan | BANJARMASIN TENGAH  |  2025 |             185 |         4778 |         3.87 | f
+ kecamatan | BANJARMASIN TIMUR   |  2025 |             280 |         7455 |         3.76 | f
+ kecamatan | BANJARMASIN UTARA   |  2025 |             279 |         9194 |         3.03 | f
+
+== U04. View: jumlah baris tingkat kelurahan per tahun (harap 52)
+ tahun | count 
+-------+-------
+  2024 |    52
+  2025 |    52
+
+ROLLBACK
+== U05. Setelah ROLLBACK: isi dw harus kosong kembali
+ dim_kelurahan | fact_penduduk | fact_stunting 
+---------------+---------------+---------------
+             0 |             0 |             0
+

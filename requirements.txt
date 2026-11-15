@@ -1,0 +1,20 @@
+# Pustaka pipeline (ingestion, ETL, quality, ML) yang dipasang di image Airflow.
+# Dipasang bersama constraints resmi Airflow 3.3.2 / Python 3.12 (lihat docker/airflow/Dockerfile).
+# Versi di bawah sama dengan hasil resolusi pip terhadap constraints tersebut (diuji 15 Nov 2026).
+
+# Sudah ada di image Airflow (dikunci constraints), ditulis ulang agar eksplisit
+pandas==3.0.5
+numpy==2.5.3
+scikit-learn==1.9.1
+boto3==1.43.75
+psycopg2-binary==2.9.13
+
+# Tambahan: baca Excel
+openpyxl==3.1.5
+et_xmlfile==2.0.0
+
+# Tambahan: baca tabel PDF (tidak ada di constraints Airflow, di-pin manual)
+pdfplumber==0.11.10
+pdfminer.six==20260107
+pypdfium2==5.15.2
+pillow==13.0.0

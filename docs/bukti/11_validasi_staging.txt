@@ -1,0 +1,94 @@
+# Validasi staging — sql/validasi/01_staging.sql — 2026-11-15 20:25
+== V01. Laporan bulanan: baris staging per tahun (harap posyandu × 60: 23.700; 23.700; 29.220; 29.400)
+ tahun_sheet | baris_posyandu | baris_staging | harapan | cocok 
+-------------+----------------+---------------+---------+-------
+        2023 |            395 |         23700 |   23700 | t
+        2024 |            395 |         23700 |   23700 | t
+        2025 |            487 |         29220 |   29220 | t
+        2026 |            490 |         29400 |   29400 | t
+
+== V02. Laporan bulanan: tipe sel % Dilayani (s = teks, n = angka, _ = kosong) — bahan T03
+ tahun_sheet | tipe_persen_dilayani | count 
+-------------+----------------------+-------
+        2023 | _                    | 11735
+        2023 | n                    |  7213
+        2023 | s                    |  4752
+        2024 | _                    | 10802
+        2024 | n                    |  8045
+        2024 | s                    |  4853
+        2025 | _                    |   742
+        2025 | n                    | 12914
+        2025 | s                    | 15564
+        2026 | _                    | 10067
+        2026 | n                    |  6500
+        2026 | s                    | 12833
+
+== V03. Antrop: baris posyandu vs baris total (harap 490 dan 1)
+ baris_posyandu | baris_total |   cut_off   
+----------------+-------------+-------------
+            490 |           1 | : JUNI 2026
+
+== V04. Antrop: rekonsiliasi jumlah 490 baris vs baris total (bahan T14), per kolom alat
+           kolom            | jumlah_490_baris | baris_total | selisih | non_angka 
+----------------------------+------------------+-------------+---------+-----------
+ lila_std_baik              |              225 |         225 |       0 |         0
+ lila_std_rusak             |              199 |         199 |       0 |         0
+ lila_tstd_baik             |               74 |          74 |       0 |         0
+ lila_tstd_rusak            |               26 |          26 |       0 |         0
+ panjang_bayi_std_baik      |              407 |         407 |       0 |         0
+ panjang_bayi_std_rusak     |               31 |          31 |       0 |         0
+ panjang_bayi_tstd_baik     |               37 |          37 |       0 |         0
+ panjang_bayi_tstd_rusak    |               27 |          27 |       0 |         0
+ timbangan_badan_std_baik   |              368 |         368 |       0 |         0
+ timbangan_badan_std_rusak  |               61 |          61 |       0 |         0
+ timbangan_badan_tstd_baik  |               52 |          52 |       0 |         0
+ timbangan_badan_tstd_rusak |               23 |          23 |       0 |         0
+ timbangan_bayi_std_baik    |              348 |         348 |       0 |         1
+ timbangan_bayi_std_rusak   |               51 |          51 |       0 |         1
+ timbangan_bayi_tstd_baik   |               24 |          24 |       0 |         1
+ timbangan_bayi_tstd_rusak  |               70 |          70 |       0 |         1
+ tinggi_badan_std_baik      |              433 |         433 |       0 |         0
+ tinggi_badan_std_rusak     |               19 |          19 |       0 |         0
+ tinggi_badan_tstd_baik     |               32 |          32 |       0 |         0
+ tinggi_badan_tstd_rusak    |               17 |          17 |       0 |         0
+
+== V05. Kader: jumlah baris, kode pseudonim, jenis kelamin (harap 2.545; N/A = 2)
+ baris | kader_kode_terisi | kader_kode_unik | jk_na | jk_kosong 
+-------+-------------------+-----------------+-------+-----------
+  2545 |              2545 |            2049 |     2 |         0
+
+== V06. Privasi: kolom alamat di mana pun, atau kolom nama di tabel kader (selain nama posyandu) — harap 0 baris
+ table_schema | table_name | column_name 
+--------------+------------+-------------
+
+== V07. E1: per kelurahan, jumlah 16 baris kelompok umur vs baris Total (L, P, jumlah)
+ kelurahan | total_cocok |                   tidak_cocok                    
+-----------+-------------+--------------------------------------------------
+        52 |          51 | KELAYAN DALAM (L 5396/5416, P 5225/?, J 10621/?)
+
+== V08. E1: baris data dengan L + P <> jumlah
+ baris_data | l_plus_p_tidak_sama 
+------------+---------------------
+        928 |                   0
+
+== V09. E1 (pratinjau Q08): penduduk 0–4 = baris urutan ke-1 tiap blok; jumlah kelurahan vs Tabel 7 per kecamatan
+   kecamatan_asli    | n_kelurahan | balita_kelurahan | balita_tabel7 | selisih 
+---------------------+-------------+------------------+---------------+---------
+ BANJARMASIN BARAT   |           9 |             7708 |          7708 |       0
+ BANJARMASIN SELATAN |          12 |            10670 |         10670 |       0
+ BANJARMASIN TENGAH  |          12 |             4778 |          4778 |       0
+ BANJARMASIN TIMUR   |           9 |             7455 |          7455 |       0
+ BANJARMASIN UTARA   |          10 |             9194 |          9194 |       0
+ KOTA (Tabel 6)      |          52 |            39805 |         39805 |       0
+
+== V10. E2: jumlah kelurahan dan total stunting (baris data vs baris total portal; acuan 1.432 dan 1.531)
+ tahun_data | kelurahan | stunting_jumlah_baris | stunting_total_portal |                                                catatan                                                
+------------+-----------+-----------------------+-----------------------+-------------------------------------------------------------------------------------------------------
+       2024 |        52 |                  1432 | 1.432                 | Sumber dari SIGIZI Kesga bulan Juni 2024 (hasil ISPS) yang diunduh pada 06 Maret 2025
+       2025 |        52 |                  1531 | 1.531                 | 1. Data Stunting Data Tarikan 24 Januari 2026 2. Data Wasting dan Underweight Data Bulan Agustus 2025
+
+== V11. Status task batch terakhir
+    task_name    | status | jumlah_baris |                                           pesan                                            
+-----------------+--------+--------------+--------------------------------------------------------------------------------------------
+ staging_laporan | GAGAL  |              | DataKorupError: checksum objek raw/internal_laporan_posyandu/2026-11-15/Laporan_Kunjungan_
+

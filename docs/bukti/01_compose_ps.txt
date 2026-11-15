@@ -1,0 +1,11 @@
+# docker compose ps -a — 2026-11-15 18:35 WITA (UTC+8)
+
+SERVICE                 IMAGE                                                                                                             STATUS                        PORTS
+airflow-apiserver       posyandu-airflow:3.3.2-python3.12                                                                                 Up 2 minutes (healthy)        127.0.0.1:8081->8080/tcp
+airflow-dag-processor   posyandu-airflow:3.3.2-python3.12                                                                                 Up About a minute (healthy)   8080/tcp
+airflow-init            posyandu-airflow:3.3.2-python3.12                                                                                 Exited (0) 2 minutes ago      
+airflow-scheduler       posyandu-airflow:3.3.2-python3.12                                                                                 Up About a minute (healthy)   8080/tcp
+dashboard               posyandu-dashboard:streamlit                                                                                      Up 2 minutes (healthy)        127.0.0.1:8501->8501/tcp
+datalake                pgsty/silo:RELEASE.2026-11-12T00-00-00Z@sha256:c20d112390b9a9ce8c11b8af95ad35bcaa62f4759663c09c936cd8d2b511f329   Up 2 minutes (healthy)        127.0.0.1:9000-9001->9000-9001/tcp
+datalake-init           posyandu-airflow:3.3.2-python3.12                                                                                 Exited (0) 2 minutes ago      
+postgres                postgres:16.13@sha256:5d143123fdf80462d1778cd4f24b9f7ca13c87174bca19141fb194c5a1ebca59                            Up 2 minutes (healthy)        127.0.0.1:5432->5432/tcp
