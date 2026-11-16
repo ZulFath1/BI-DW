@@ -80,10 +80,14 @@ SEED = 42
 # ---------------------------------------------------------------- data & preprocessing
 def muat_profil(cur) -> pd.DataFrame:
     kolom = ["posyandu_key", "posyandu_id", "nama_kecamatan"] + FITUR_INTERNAL + FITUR_EKSTERNAL
-    cur.execute(f"SELECT {', '.join(kolom)} FROM mart.posyandu_profil WHERE is_layak_ml ORDER BY posyandu_key")
+    cur.execute(f"SELECT {', '.join(kolom)} FROM mart.posyandu_profil WHERE is_layak_ml ORDER BY posyandu_id")
     df = pd.DataFrame(cur.fetchall(), columns=kolom)
     for c in FITUR_INTERNAL + FITUR_EKSTERNAL:
         df[c] = pd.to_numeric(df[c], errors="coerce").astype(float)
+    # jumlah_kader = 0 berarti posyandu TIDAK punya baris di data kader (tidak terpetakan), bukan "tanpa kader";
+    # angka acuan "< 5 kader" juga hanya menghitung posyandu berkader. Diperlakukan kosong -> imputasi median
+    # (K58). Tanpa ini posyandu tanpa data kader naik ke puncak daftar prioritas dengan alasan "0 kader".
+    df.loc[df.jumlah_kader == 0, "jumlah_kader"] = np.nan
     return df
 
 
@@ -180,48 +184,151 @@ def pilih_model(hasil: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------- interpretasi cluster
+# Nama cluster bagi dinas dibuat dengan ATURAN eksplisit atas z-score rata-rata cluster terhadap rata-rata
+# kota (bukan ditulis tangan per nomor cluster), sehingga tetap benar bila run berikutnya menghasilkan
+# nomor/urutan cluster yang berbeda. Aturan dicek berurutan; yang pertama cocok dipakai:
+#   1. anomali data z >= 1                           -> Pencatatan perlu diverifikasi       (prioritas Sedang)
+#   2. alat standar z <= -1                          -> Kekurangan alat antropometri         (Sedang)
+#   3. jumlah kader z >= 1 dan cakupan z <= -0,5     -> Kader banyak, cakupan rendah         (Tinggi)
+#   4. cakupan (min ibu hamil, bayi balita) <= -0,5  -> Cakupan rendah                       (Tinggi)
+#   5. kader terlatih z <= -0,5                      -> Cakupan baik, kader belum terlatih   (Sedang)
+#   6. semua indikator (arah baik) >= -0,3           -> Kinerja baik (percontohan)           (Rendah)
+#   7. selain itu                                    -> Mendekati rata-rata kota              (Sedang)
+# Tingkat prioritas: Tinggi = hasil layanan (cakupan) rendah; Sedang = masalah input/proses (alat,
+# pencatatan, pelatihan) dengan cakupan tidak rendah; Rendah = tidak perlu intervensi khusus.
+TINGKAT_URUT = {"Tinggi": 0, "Sedang": 1, "Rendah": 2}
+REKOMENDASI = {
+    "Pencatatan perlu diverifikasi":
+        "Puskesmas memverifikasi angka Sasaran dan Cakupan sebelum dipakai untuk target; pendampingan pengisian "
+        "format laporan bulanan; cocokkan Sasaran balita dengan data penduduk 0-4 tahun.",
+    "Kekurangan alat antropometri":
+        "Prioritaskan pengadaan/penggantian alat standar (timbangan digital, pengukur panjang/tinggi badan, pita "
+        "LILA) di posyandu cluster ini lebih dulu; kalibrasi alat yang masih ada.",
+    "Kader banyak, cakupan rendah":
+        "Masalahnya bukan kekurangan tenaga: supervisi puskesmas atas pembagian tugas dan jadwal kader, kunjungan "
+        "rumah sasaran yang tidak datang, evaluasi lokasi dan jam buka posyandu.",
+    "Cakupan rendah":
+        "Sweeping/kunjungan rumah ibu hamil dan balita, pengingat jadwal (pesan WA, pengumuman RT), koordinasi "
+        "dengan bidan kelurahan; periksa juga apakah angka Sasaran terlalu besar.",
+    "Cakupan baik, kader belum terlatih":
+        "Ikutkan kader pelatihan 25 keterampilan secara bertahap; cakupan sudah baik, pelatihan menjaga mutu "
+        "pengukuran dan konseling.",
+    "Kinerja baik (percontohan)":
+        "Jadikan percontohan dan mentor bagi posyandu cluster lain (kunjungan belajar antarkader); cukup "
+        "pemantauan rutin.",
+    "Mendekati rata-rata kota": "Pemantauan rutin bulanan; tidak perlu intervensi khusus.",
+}
+
+
+def _d(v: float, n: int = 1) -> str:
+    """Desimal gaya Indonesia (koma), mis. 8,1."""
+    return f"{v:.{n}f}".replace(".", ",")
+
+
+def _lvl(z: float) -> str:
+    return "di atas" if z >= 0.3 else "di bawah" if z <= -0.3 else "mendekati"
+
+
+def kategori_bisnis(zc: dict, m: dict, kota: dict) -> tuple[str, str, str]:
+    """(nama, tingkat_prioritas, karakter satu kalimat) dari z-score dan rata-rata skala asli sebuah cluster."""
+    def g(f):
+        return float(zc.get(f, 0.0))
+    cak = min(g("persen_ibu_hamil_2025"), g("persen_bayi_balita_2025"))
+    ih, bb = m.get("persen_ibu_hamil_2025", 0), m.get("persen_bayi_balita_2025", 0)
+    kih, kbb = kota.get("persen_ibu_hamil_2025", 0), kota.get("persen_bayi_balita_2025", 0)
+    if g("persen_anomali_2025") >= 1.0:
+        return ("Pencatatan perlu diverifikasi", "Sedang",
+                f"Rata-rata {_d(m['persen_anomali_2025'])}% baris laporan 2025 bertanda anomali (kota "
+                f"{_d(kota['persen_anomali_2025'])}%), sehingga cakupannya ({ih:.0f}% ibu hamil, {bb:.0f}% bayi "
+                "balita) belum bisa dipercaya penuh.")
+    if g("rasio_alat_baik") <= -1.0:
+        return ("Kekurangan alat antropometri", "Sedang",
+                f"Hanya {_d(5 * m['rasio_alat_baik'])} dari 5 jenis alat standar dalam kondisi baik (kota "
+                f"{_d(5 * kota['rasio_alat_baik'])}), sementara cakupan {_lvl(cak)} rata-rata kota.")
+    if g("jumlah_kader") >= 1.0 and cak <= -0.5:
+        return ("Kader banyak, cakupan rendah", "Tinggi",
+                f"Rata-rata {_d(m['jumlah_kader'])} kader per posyandu (kota {_d(kota['jumlah_kader'])}), tetapi "
+                f"cakupan bayi balita hanya {bb:.0f}% (kota {kbb:.0f}%).")
+    if cak <= -0.5:
+        return ("Cakupan rendah", "Tinggi",
+                f"Cakupan ibu hamil {ih:.0f}% dan bayi balita {bb:.0f}%, jauh di bawah rata-rata kota "
+                f"({kih:.0f}% dan {kbb:.0f}%), padahal alat dan jumlah kader tidak jauh dari rata-rata.")
+    if g("persen_kader_terlatih") <= -0.5:
+        return ("Cakupan baik, kader belum terlatih", "Sedang",
+                f"Cakupan {_lvl(cak)} rata-rata kota ({ih:.0f}% ibu hamil, {bb:.0f}% bayi balita), tetapi baru "
+                f"{m['persen_kader_terlatih']:.0f}% kader ikut pelatihan 25 keterampilan (kota "
+                f"{kota['persen_kader_terlatih']:.0f}%).")
+    if min(ARAH[f] * g(f) for f in zc) >= -0.3:
+        return ("Kinerja baik (percontohan)", "Rendah",
+                f"Cakupan ibu hamil {ih:.0f}% dan bayi balita {bb:.0f}%, {m.get('persen_kader_terlatih', 0):.0f}% "
+                f"kader terlatih, anomali data {_d(m.get('persen_anomali_2025', 0))}%: semua indikator di atas atau "
+                "mendekati rata-rata kota.")
+    return ("Mendekati rata-rata kota", "Sedang", "Tidak ada indikator yang menyimpang jauh dari rata-rata kota.")
+
+
 def profil_cluster(x: pd.DataFrame, label: np.ndarray, fitur: list[str]) -> tuple[pd.DataFrame, dict, dict]:
-    """Rata-rata fitur (skala asli) per cluster, z-score terhadap rata-rata kota, deskripsi & label prioritas."""
+    """Rata-rata fitur (skala asli) per cluster, z-score terhadap rata-rata kota, dan interpretasi.
+
+    Mengembalikan (baris profil, nama {cluster: "K1 ..."}, info {cluster: deskripsi, nama, tingkat, karakter,
+    rekomendasi, skor}). Urutan K1..Kn: tingkat prioritas (Tinggi -> Rendah), lalu skor = rata-rata z-score
+    semua fitur dengan arah "baik" (terendah lebih dulu)."""
     rata_kota, sd_kota = x.mean(), x.std(ddof=0).replace(0, 1)
-    baris, skor, desk = [], {}, {}
+    baris, info = [], {}
     for c in sorted(set(label.tolist())):
         m = x[label == c].mean()
         zc = (m - rata_kota) / sd_kota
-        skor[c] = float(np.mean([ARAH[f] * zc[f] for f in fitur]))
         menonjol = sorted(fitur, key=lambda f: -abs(zc[f]))
         teks = [f"{LABEL_FITUR[f]} {'tinggi' if zc[f] > 0 else 'rendah'}" for f in menonjol if abs(zc[f]) >= 0.5][:3]
-        desk[c] = ", ".join(teks) if teks else "mendekati rata-rata kota"
+        nama_b, tingkat, karakter = kategori_bisnis({f: zc[f] for f in fitur}, m.to_dict(), rata_kota.to_dict())
+        info[c] = {"deskripsi": ", ".join(teks) if teks else "mendekati rata-rata kota", "nama": nama_b,
+                   "tingkat": tingkat, "karakter": karakter, "rekomendasi": REKOMENDASI[nama_b],
+                   "skor": float(np.mean([ARAH[f] * zc[f] for f in fitur]))}
         for f in fitur:
             baris.append({"cluster": int(c), "fitur": f, "rata_rata": float(m[f]), "rata_rata_kota": float(rata_kota[f]),
                           "z_score": float(zc[f]), "n_posyandu": int((label == c).sum())})
-    # Urutan: skor terendah = K1 (paling perlu pembinaan menurut rata-rata semua fitur), tertinggi = terakhir.
-    # Nama cluster = karakter paling menonjol (1–2 fitur dengan |z| terbesar), bukan ditebak.
-    urut = sorted(skor, key=lambda c: skor[c])
-    nama = {}
+    urut = sorted(info, key=lambda c: (TINGKAT_URUT[info[c]["tingkat"]], info[c]["skor"]))
+    nama, dipakai = {}, set()
     for i, c in enumerate(urut):
-        prof_c = sorted((r for r in baris if r["cluster"] == c), key=lambda r: -abs(r["z_score"]))
-        frasa = []
-        for r in prof_c:
-            if abs(r["z_score"]) < 0.5 and frasa:
-                break
-            p = FRASA[(r["fitur"], r["z_score"] > 0)]
-            if p not in frasa:
-                frasa.append(p)
-            if len(frasa) == 2:
-                break
-        nama[c] = f"K{i + 1} " + " & ".join(frasa)
-    return pd.DataFrame(baris), nama, desk
+        n = info[c]["nama"]
+        if n in dipakai:  # dua cluster jatuh ke aturan yang sama -> dibedakan dengan fitur paling menonjol
+            n = f"{n} ({info[c]['deskripsi'].split(',')[0]})"
+        dipakai.add(n)
+        nama[c] = f"K{i + 1} {n}"
+    return pd.DataFrame(baris), nama, info
 
 
-FRASA = {("persen_ibu_hamil_2025", False): "cakupan rendah", ("persen_ibu_hamil_2025", True): "cakupan tinggi",
-         ("persen_bayi_balita_2025", False): "cakupan rendah", ("persen_bayi_balita_2025", True): "cakupan tinggi",
-         ("kelengkapan_2025", False): "laporan tidak lengkap", ("kelengkapan_2025", True): "laporan lengkap",
-         ("persen_anomali_2025", True): "data banyak anomali", ("persen_anomali_2025", False): "data rapi",
-         ("rasio_alat_baik", False): "alat standar kurang", ("rasio_alat_baik", True): "alat lengkap",
-         ("jumlah_kader", True): "kader banyak", ("jumlah_kader", False): "kader sedikit",
-         ("persen_kader_terlatih", False): "kader belum terlatih", ("persen_kader_terlatih", True): "kader terlatih",
-         ("rasio_stunting_kelurahan_2025", True): "stunting kelurahan tinggi",
-         ("rasio_stunting_kelurahan_2025", False): "stunting kelurahan rendah"}
+TEKS_ALASAN = {
+    "persen_ibu_hamil_2025": lambda v, k: f"cakupan ibu hamil {v:.0f}% (kota {k:.0f}%)",
+    "persen_bayi_balita_2025": lambda v, k: f"cakupan bayi balita {v:.0f}% (kota {k:.0f}%)",
+    "kelengkapan_2025": lambda v, k: f"kelengkapan laporan {100 * v:.0f}% (kota {100 * k:.0f}%)",
+    "persen_anomali_2025": lambda v, k: f"{v:.0f}% baris laporan anomali (kota {_d(k)}%)",
+    "rasio_alat_baik": lambda v, k: f"alat standar baik {5 * v:.0f}/5 jenis (kota {_d(5 * k)})",
+    "jumlah_kader": lambda v, k: f"{v:.0f} kader (kota {_d(k)})",
+    "persen_kader_terlatih": lambda v, k: f"kader terlatih {v:.0f}% (kota {k:.0f}%)",
+    "rasio_stunting_kelurahan_2025": lambda v, k: f"rasio stunting kelurahan {_d(v)}% (kota {_d(k)}%)",
+}
+
+
+def prioritas_posyandu(x: pd.DataFrame, label: np.ndarray, fitur: list[str], info: dict) -> pd.DataFrame:
+    """Daftar prioritas per posyandu.
+
+    skor   = rata-rata z-score fitur dengan arah dibalik (makin besar makin perlu pembinaan), skala asli
+    tingkat = tingkat prioritas cluster-nya
+    peringkat = urut tingkat (Tinggi dulu), lalu skor terbesar
+    alasan = maksimal 2 indikator terburuk posyandu itu (z arah baik <= -0,5) dibanding rata-rata kota."""
+    rata, sd = x.mean(), x.std(ddof=0).replace(0, 1)
+    zarah = pd.DataFrame({f: ARAH[f] * (x[f] - rata[f]) / sd[f] for f in fitur}, index=x.index)
+    out = pd.DataFrame({"skor": -zarah.mean(axis=1), "tingkat": [info[c]["tingkat"] for c in label]}, index=x.index)
+    alasan = []
+    for i, r in zarah.iterrows():
+        buruk = [f for f in r.sort_values().index if r[f] <= -0.5][:2]
+        alasan.append("; ".join(TEKS_ALASAN[f](x.at[i, f], rata[f]) for f in buruk)
+                      or "tidak ada indikator yang jauh di bawah rata-rata kota")
+    out["alasan"] = alasan
+    urutan = out.assign(u=out.tingkat.map(TINGKAT_URUT)).sort_values(["u", "skor"], ascending=[True, False]).index
+    out.loc[urutan, "peringkat"] = np.arange(1, len(out) + 1)
+    out["peringkat"] = out.peringkat.astype(int)
+    return out
 
 
 # ---------------------------------------------------------------- task
@@ -246,7 +353,8 @@ def train_ml(batch_id: str, percobaan_ke: int | None = None) -> dict:
                     label = AgglomerativeClustering(terpilih["k"], linkage="ward").fit_predict(d["z"])
                     pusat = np.vstack([d["z"][label == c].mean(axis=0) for c in range(terpilih["k"])])
                 jarak = np.linalg.norm(d["z"] - pusat[label], axis=1)
-                prof, nama, desk = profil_cluster(d["x"], label, d["fitur"])
+                prof, nama, info = profil_cluster(d["x"], label, d["fitur"])
+                prio = prioritas_posyandu(d["x"], label, d["fitur"], info)
                 aturan = kelompok_aturan(df)
                 # Kesesuaian dengan baseline (bukan "akurasi": clustering tidak punya label benar).
                 ari_aturan = float(adjusted_rand_score(aturan, label))
@@ -260,14 +368,20 @@ def train_ml(batch_id: str, percobaan_ke: int | None = None) -> dict:
                                               h["catatan"], batch_id) for h in hasil])
                 cur.execute("DELETE FROM mart.hasil_cluster")
                 execute_values(cur, """INSERT INTO mart.hasil_cluster (posyandu_key, posyandu_id, model_id, cluster,
-                    label_cluster, kelompok_aturan, jarak_centroid, batch_id) VALUES %s""",
-                               [(int(pk), pid, terpilih["model_id"], int(c), nama[int(c)], a, float(j), batch_id)
-                                for pk, pid, c, a, j in zip(df.posyandu_key, df.posyandu_id, label, aturan, jarak)])
+                    label_cluster, kelompok_aturan, jarak_centroid, tingkat_prioritas, skor_kebutuhan,
+                    peringkat_prioritas, alasan_prioritas, batch_id) VALUES %s""",
+                               [(int(pk), pid, terpilih["model_id"], int(c), nama[int(c)], a, float(j), p.tingkat,
+                                 float(p.skor), int(p.peringkat), p.alasan, batch_id)
+                                for pk, pid, c, a, j, p in zip(df.posyandu_key, df.posyandu_id, label, aturan, jarak,
+                                                               prio.itertuples())])
                 cur.execute("DELETE FROM mart.cluster_profil")
                 execute_values(cur, """INSERT INTO mart.cluster_profil (model_id, cluster, label_cluster, deskripsi,
-                    n_posyandu, fitur, rata_rata, rata_rata_kota, z_score, batch_id) VALUES %s""",
-                               [(terpilih["model_id"], r.cluster, nama[r.cluster], desk[r.cluster], r.n_posyandu,
-                                 r.fitur, r.rata_rata, r.rata_rata_kota, r.z_score, batch_id)
+                    n_posyandu, fitur, rata_rata, rata_rata_kota, z_score, tingkat_prioritas, karakter, rekomendasi,
+                    batch_id) VALUES %s""",
+                               [(terpilih["model_id"], r.cluster, nama[r.cluster], info[r.cluster]["deskripsi"],
+                                 r.n_posyandu, r.fitur, r.rata_rata, r.rata_rata_kota, r.z_score,
+                                 info[r.cluster]["tingkat"], info[r.cluster]["karakter"],
+                                 info[r.cluster]["rekomendasi"], batch_id)
                                 for r in prof.itertuples()])
                 tulis_dq_log(cur, batch_id, "ml", [{
                     "kode_aturan": "ML01", "tingkat": "INFO", "objek": "mart.hasil_cluster",
@@ -284,4 +398,4 @@ def train_ml(batch_id: str, percobaan_ke: int | None = None) -> dict:
                             f"DBI {terpilih['davies_bouldin']:.3f}); {len(hasil)} model dibandingkan")
         return {"model": terpilih["model_id"], "silhouette": round(terpilih["silhouette"], 4), "n": len(df),
                 "ari_vs_aturan": round(ari_aturan, 4),
-                "cluster": {nama[c]: desk[c] for c in sorted(nama, key=lambda c: nama[c])}}
+                "cluster": {nama[c]: info[c]["tingkat"] for c in sorted(nama, key=lambda c: nama[c])}}

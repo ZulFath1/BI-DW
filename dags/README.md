@@ -35,4 +35,18 @@ pemeriksaan kritis sebelum load lulus, selain itu `quarantine`. `quarantine` men
 `refresh_dashboard` (penanda batch baru untuk cache Streamlit + cek health endpoint dashboard).
 
 Bukti eksekusi: `docs/bukti/16_run_dag_minggu2.txt`, `22–24_uji_dag_*.txt` (uji kegagalan nyata),
-screenshot `30–36_airflow_*.png`.
+`29_uji_e2e_bersih.txt` (run terjadwal dari stack kosong), screenshot `30–36_airflow_*.png`.
+
+## `posyandu_backup.py` (3 task)
+
+```
+backup_database ─> mirror_lake ─> retensi
+```
+
+| Pengaturan | Nilai | Alasan |
+|---|---|---|
+| Jadwal | `0 1 * * *` Asia/Makassar (setiap hari 01.00 WITA); DAG **aktif** | Di luar jendela pipeline (02.00 tanggal 10) agar isi database tidak berubah selama dump |
+| `retries` | 2, jeda 5 menit | Error sesaat; callback retry/gagal sama dengan DAG utama |
+| Isi | pg_dump DWH & metadata Airflow + manifest verifikasi; mirror raw zone; retensi 7 harian + 4 mingguan | Lihat `backup/README.md` (K54) |
+
+Bukti: `docs/bukti/28_backup.txt`, uji restore `30_uji_pemulihan.txt`.

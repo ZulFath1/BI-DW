@@ -46,3 +46,21 @@ FROM mart.cluster_profil ORDER BY label_cluster, fitur;
 \echo '== M09 Q06 di mart: tidak ada kolom nama/alamat/usia kader'
 SELECT count(*) AS kolom_terlarang FROM information_schema.columns
 WHERE table_schema = 'mart' AND (column_name ~* 'alamat' OR column_name ~* 'nama_kader' OR column_name ~* '(^|_)usia($|_)');
+
+\echo '== M10 mart.kunjungan_posyandu_bulanan = fakta (106.020 baris) dan merekonsiliasi KPI & anomali (selisih harus 0)'
+SELECT (SELECT count(*) FROM mart.kunjungan_posyandu_bulanan) AS baris_mart,
+       (SELECT count(*) FROM dw.fact_kunjungan_bulanan) AS baris_fakta,
+       (SELECT sum(cakupan_kpi) FROM mart.kunjungan_posyandu_bulanan) - (SELECT sum(cakupan) FROM mart.kpi_cakupan_bulanan) AS selisih_cakupan,
+       (SELECT sum(sasaran_kpi) FROM mart.kunjungan_posyandu_bulanan) - (SELECT sum(sasaran) FROM mart.kpi_cakupan_bulanan) AS selisih_sasaran,
+       (SELECT count(*) FILTER (WHERE flag_anomali > 0) FROM mart.kunjungan_posyandu_bulanan)
+         - (SELECT sum(n_baris) FROM mart.ringkasan_kualitas WHERE item = 'Total baris anomali') AS selisih_anomali;
+
+\echo '== M11 Daftar prioritas ML: peringkat unik 1..n, tingkat per cluster konsisten'
+SELECT count(*) AS posyandu, count(DISTINCT peringkat_prioritas) AS peringkat_unik, min(peringkat_prioritas) AS min,
+       max(peringkat_prioritas) AS max, count(*) FILTER (WHERE alasan_prioritas IS NULL) AS tanpa_alasan
+FROM mart.hasil_cluster;
+SELECT p.label_cluster, p.tingkat_prioritas, p.n_posyandu, count(h.*) AS di_hasil,
+       min(h.peringkat_prioritas) AS peringkat_min, max(h.peringkat_prioritas) AS peringkat_maks
+FROM (SELECT DISTINCT label_cluster, tingkat_prioritas, n_posyandu FROM mart.cluster_profil) p
+JOIN mart.hasil_cluster h ON h.label_cluster = p.label_cluster AND h.tingkat_prioritas = p.tingkat_prioritas
+GROUP BY 1, 2, 3 ORDER BY 1;

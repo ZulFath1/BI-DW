@@ -21,3 +21,12 @@ RUN pip install --no-cache-dir \
       "apache-airflow==${AIRFLOW_VERSION}" \
       -r /tmp/requirements.txt \
       --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+
+# Klien PostgreSQL 16 untuk backup/restore (backup/backup.py). Image dasar hanya membawa klien 18;
+# dump dari pg_dump 18 dapat memuat perintah (mis. SET transaction_timeout) yang ditolak server PG 16
+# saat restore. Repo PGDG sudah terpasang di image dasar. Dipasang setelah pip agar cache layer pip tetap.
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
+ && rm -rf /var/lib/apt/lists/*
+USER airflow

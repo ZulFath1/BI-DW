@@ -157,6 +157,20 @@ SQL_MART = {
         FROM dw.fact_kunjungan_bulanan f JOIN dw.dim_waktu w ON w.waktu_key = f.waktu_key
         GROUP BY w.tahun""",
 
+    # Grain fakta (posyandu versi × bulan × kelompok) agar dashboard bisa memfilter per puskesmas & cluster.
+    "kunjungan_posyandu_bulanan": f"""
+        INSERT INTO mart.kunjungan_posyandu_bulanan
+        SELECT f.posyandu_key, p.posyandu_id, kl.nama_kecamatan, p.puskesmas, f.waktu_key, w.tahun, w.bulan,
+               k.kelompok_key, k.nama_kelompok, s.status_key, s.nama_status,
+               CASE WHEN {KPI} THEN f.cakupan END, CASE WHEN {KPI} THEN f.sasaran END,
+               f.flag_anomali, f.is_cakupan_turunan, %(batch_id)s
+        FROM dw.fact_kunjungan_bulanan f
+        JOIN dw.dim_waktu w ON w.waktu_key = f.waktu_key
+        JOIN dw.dim_posyandu p ON p.posyandu_key = f.posyandu_key
+        JOIN dw.dim_kelurahan kl ON kl.kelurahan_key = p.kelurahan_key
+        JOIN dw.dim_kelompok_sasaran k ON k.kelompok_key = f.kelompok_key
+        JOIN dw.dim_status_data s ON s.status_key = f.status_key""",
+
     "quality_gate_terakhir": """
         INSERT INTO mart.quality_gate_terakhir
         SELECT DISTINCT ON (kode_cek) kode_cek, fase, is_kritis, lulus, nilai, harapan, batch_id, dicatat_pada

@@ -14,6 +14,7 @@
 --   cluster_profil        rata-rata fitur per cluster model terpilih (interpretasi)
 --   ml_evaluasi           setiap model yang dicoba: metrik Silhouette, Davies-Bouldin, inertia
 --   dashboard_refresh     penanda refresh: dashboard membersihkan cache bila batch berubah
+--   kunjungan_posyandu_bulanan  posyandu × bulan × kelompok (filter dashboard per puskesmas/cluster)
 --
 -- Tidak ada kolom nama/alamat/usia kader di mart (diperiksa Q06).
 -- Idempotent: IF NOT EXISTS.
@@ -173,3 +174,42 @@ CREATE TABLE IF NOT EXISTS mart.dashboard_refresh (
     dibuat_pada  timestamptz NOT NULL DEFAULT now(),
     keterangan   text
 );
+
+-- ---------------------------------------------------------------------
+-- Tambahan 16 Nov 2026 (tindak lanjut ML & dashboard). ALTER ... IF NOT EXISTS agar idempotent
+-- pada database yang sudah berisi.
+-- ---------------------------------------------------------------------
+-- Interpretasi cluster bagi dinas (aturan penamaan di ml/clustering.py) dan daftar prioritas per posyandu
+ALTER TABLE mart.cluster_profil ADD COLUMN IF NOT EXISTS tingkat_prioritas text;   -- Tinggi | Sedang | Rendah
+ALTER TABLE mart.cluster_profil ADD COLUMN IF NOT EXISTS karakter          text;   -- satu kalimat, skala asli
+ALTER TABLE mart.cluster_profil ADD COLUMN IF NOT EXISTS rekomendasi       text;
+ALTER TABLE mart.hasil_cluster  ADD COLUMN IF NOT EXISTS tingkat_prioritas   text;
+ALTER TABLE mart.hasil_cluster  ADD COLUMN IF NOT EXISTS skor_kebutuhan      numeric(8, 4);  -- makin besar makin perlu
+ALTER TABLE mart.hasil_cluster  ADD COLUMN IF NOT EXISTS peringkat_prioritas integer;        -- 1 = paling prioritas
+ALTER TABLE mart.hasil_cluster  ADD COLUMN IF NOT EXISTS alasan_prioritas    text;           -- 2 indikator terburuk
+
+-- Grain posyandu (versi SCD 2) × bulan × kelompok: sumber semua visual dashboard yang harus bisa
+-- difilter tahun, kecamatan, puskesmas, dan cluster. Hanya kolom agregatif/kode; tanpa data kader.
+--   cakupan_kpi / sasaran_kpi berisi nilai HANYA bila baris lolos filter KPI K38, selain itu NULL,
+--   sehingga Σ cakupan_kpi ÷ Σ sasaran_kpi = KPI cakupan resmi untuk irisan filter apa pun.
+CREATE TABLE IF NOT EXISTS mart.kunjungan_posyandu_bulanan (
+    posyandu_key     integer  NOT NULL,   -- versi posyandu saat itu (puskesmas bisa berbeda antar versi)
+    posyandu_id      text     NOT NULL,   -- kunci tetap: penghubung ke hasil_cluster
+    nama_kecamatan   text     NOT NULL,
+    puskesmas        text     NOT NULL,
+    waktu_key        integer  NOT NULL,
+    tahun            smallint NOT NULL,
+    bulan            smallint NOT NULL,
+    kelompok_key     smallint NOT NULL,
+    nama_kelompok    text     NOT NULL,
+    status_key       smallint NOT NULL,
+    nama_status      text     NOT NULL,
+    cakupan_kpi      integer,
+    sasaran_kpi      integer,
+    flag_anomali     integer  NOT NULL,   -- bitmask 4.5 (1 A1 ... 64 selisih persen)
+    is_cakupan_turunan boolean NOT NULL,
+    batch_id         text     NOT NULL,
+    PRIMARY KEY (posyandu_key, waktu_key, kelompok_key)
+);
+COMMENT ON TABLE mart.kunjungan_posyandu_bulanan IS
+    'Fakta kunjungan siap filter dashboard; cakupan_kpi/sasaran_kpi hanya terisi bila lolos filter KPI K38';

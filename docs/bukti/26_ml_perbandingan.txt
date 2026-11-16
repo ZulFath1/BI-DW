@@ -1,0 +1,142 @@
+# Evaluasi clustering posyandu — batch `final2_tahap10__20261116`
+
+487 posyandu (punya data 2025). Aturan pemilihan K39: K 3–6, ARI antar seed ≥ 0,80, cluster terkecil ≥ 5%, Silhouette tertinggi (selisih < 0,02 → Davies-Bouldin terkecil).
+
+## A. Perbandingan lengkap (45 model)
+
+| Set fitur | Model | K | Silhouette ↑ | Davies-Bouldin ↓ | Calinski-H ↑ | Inertia | ARI seed | Ukuran cluster | Terkecil | Lolos K39 | Terpilih |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| v1_internal | agglomerative | 2 | 0,494 | 0,785 | 81 | – | 1,00 | 471 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 3 | 0,357 | 0,992 | 88 | – | 1,00 | 436 / 35 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 4 | 0,170 | 1,480 | 90 | – | 1,00 | 307 / 129 / 35 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 5 | 0,189 | 1,509 | 96 | – | 1,00 | 160 / 147 / 129 / 35 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 6 | 0,212 | 1,324 | 103 | – | 1,00 | 160 / 129 / 119 / 35 / 28 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 7 | 0,212 | 1,221 | 105 | – | 1,00 | 160 / 129 / 73 / 46 / 35 / 28 / 16 | 3,3% | tidak |  |
+| v1_internal | agglomerative | 8 | 0,211 | 1,229 | 104 | – | 1,00 | 160 / 73 / 66 / 63 / 46 / 35 / 28 / 16 | 3,3% | tidak |  |
+| v1_internal | aturan | 3 | 0,063 | 2,272 | 44 | – | 1,00 | 307 / 126 / 54 | 11,1% | tidak |  |
+| v1_internal | kmeans | 2 | 0,168 | 2,125 | 88 | 2.885 | 1,00 | 253 / 234 | 48,0% | tidak |  |
+| v1_internal | kmeans | 3 | 0,185 | 1,607 | 97 | 2.434 | 0,89 | 249 / 222 / 16 | 3,3% | tidak |  |
+| v1_internal | kmeans | 4 | 0,213 | 1,420 | 106 | 2.057 | 0,84 | 217 / 210 / 44 / 16 | 3,3% | tidak |  |
+| v1_internal | kmeans | 5 | 0,235 | 1,292 | 112 | 1.766 | 0,96 | 211 / 176 / 43 / 41 / 16 | 3,3% | tidak |  |
+| v1_internal | kmeans | 6 | 0,243 | 1,167 | 119 | 1.525 | 0,93 | 143 / 137 / 118 / 39 / 35 / 15 | 3,1% | tidak |  |
+| v1_internal | kmeans | 7 | 0,244 | 1,109 | 119 | 1.371 | 0,97 | 137 / 123 / 90 / 50 / 37 / 35 / 15 | 3,1% | tidak |  |
+| v1_internal | kmeans | 8 | 0,245 | 1,166 | 117 | 1.260 | 0,96 | 132 / 88 / 86 / 52 / 43 / 36 / 35 / 15 | 3,1% | tidak |  |
+| v2_internal | agglomerative | 2 | 0,149 | 2,390 | 71 | – | 1,00 | 305 / 182 | 37,4% | tidak |  |
+| v2_internal | agglomerative | 3 | 0,155 | 1,861 | 70 | – | 1,00 | 305 / 140 / 42 | 8,6% | ya |  |
+| v2_internal | agglomerative | 4 | 0,166 | 1,768 | 75 | – | 1,00 | 230 / 140 / 75 / 42 | 8,6% | ya |  |
+| v2_internal | agglomerative | 5 | 0,159 | 1,656 | 77 | – | 1,00 | 140 / 125 / 105 / 75 / 42 | 8,6% | ya |  |
+| v2_internal | agglomerative | 6 | 0,173 | 1,448 | 79 | – | 1,00 | 140 / 105 / 95 / 75 / 42 / 30 | 6,2% | ya |  |
+| v2_internal | agglomerative | 7 | 0,190 | 1,424 | 81 | – | 1,00 | 105 / 95 / 86 / 75 / 54 / 42 / 30 | 6,2% | tidak |  |
+| v2_internal | agglomerative | 8 | 0,196 | 1,387 | 78 | – | 1,00 | 105 / 95 / 86 / 54 / 46 / 42 / 30 / 29 | 6,0% | tidak |  |
+| v2_internal | aturan | 3 | 0,068 | 2,188 | 50 | – | 1,00 | 307 / 126 / 54 | 11,1% | tidak |  |
+| v2_internal | kmeans | 2 | 0,178 | 2,018 | 105 | 2.401 | 1,00 | 254 / 233 | 47,8% | tidak |  |
+| v2_internal | kmeans | 3 | 0,187 | 1,737 | 99 | 2.077 | 0,98 | 214 / 190 / 83 | 17,0% | ya |  |
+| v2_internal | kmeans | 4 | 0,211 | 1,514 | 102 | 1.790 | 0,92 | 185 / 183 / 81 / 38 | 7,8% | ya |  |
+| v2_internal | kmeans | 5 | 0,211 | 1,349 | 104 | 1.570 | 0,96 | 144 / 126 / 103 / 76 / 38 | 7,8% | ya |  |
+| v2_internal | kmeans | 6 | 0,211 | 1,274 | 102 | 1.420 | 0,91 | 121 / 117 / 88 / 71 / 59 / 31 | 6,4% | ya | **ya** |
+| v2_internal | kmeans | 7 | 0,218 | 1,321 | 100 | 1.299 | 0,95 | 113 / 90 / 81 / 67 / 63 / 45 / 28 | 5,7% | tidak |  |
+| v2_internal | kmeans | 8 | 0,224 | 1,318 | 97 | 1.210 | 0,94 | 97 / 86 / 80 / 59 / 52 / 44 / 35 / 34 | 7,0% | tidak |  |
+| v2_internal+eksternal | agglomerative | 2 | 0,121 | 2,580 | 64 | – | 1,00 | 274 / 213 | 43,7% | tidak |  |
+| v2_internal+eksternal | agglomerative | 3 | 0,104 | 2,072 | 63 | – | 1,00 | 274 / 128 / 85 | 17,5% | ya |  |
+| v2_internal+eksternal | agglomerative | 4 | 0,134 | 1,814 | 68 | – | 1,00 | 240 / 128 / 85 / 34 | 7,0% | ya |  |
+| v2_internal+eksternal | agglomerative | 5 | 0,136 | 1,994 | 65 | – | 1,00 | 130 / 128 / 110 / 85 / 34 | 7,0% | ya |  |
+| v2_internal+eksternal | agglomerative | 6 | 0,132 | 1,764 | 63 | – | 1,00 | 128 / 110 / 95 / 85 / 35 / 34 | 7,0% | ya |  |
+| v2_internal+eksternal | agglomerative | 7 | 0,145 | 1,730 | 61 | – | 1,00 | 128 / 110 / 95 / 46 / 39 / 35 / 34 | 7,0% | tidak |  |
+| v2_internal+eksternal | agglomerative | 8 | 0,143 | 1,578 | 60 | – | 1,00 | 128 / 110 / 61 / 46 / 39 / 35 / 34 / 34 | 7,0% | tidak |  |
+| v2_internal+eksternal | aturan | 3 | 0,053 | 2,427 | 42 | – | 1,00 | 307 / 126 / 54 | 11,1% | tidak |  |
+| v2_internal+eksternal | kmeans | 2 | 0,157 | 2,222 | 89 | 2.881 | 1,00 | 257 / 230 | 47,2% | tidak |  |
+| v2_internal+eksternal | kmeans | 3 | 0,165 | 1,908 | 83 | 2.537 | 0,96 | 210 / 192 / 85 | 17,5% | ya |  |
+| v2_internal+eksternal | kmeans | 4 | 0,183 | 1,677 | 83 | 2.251 | 0,97 | 184 / 180 / 85 / 38 | 7,8% | ya |  |
+| v2_internal+eksternal | kmeans | 5 | 0,189 | 1,553 | 83 | 2.021 | 0,95 | 150 / 128 / 100 / 69 / 40 | 8,2% | ya |  |
+| v2_internal+eksternal | kmeans | 6 | 0,181 | 1,512 | 81 | 1.852 | 0,96 | 112 / 103 / 85 / 83 / 66 / 38 | 7,8% | ya |  |
+| v2_internal+eksternal | kmeans | 7 | 0,185 | 1,438 | 78 | 1.722 | 0,88 | 107 / 103 / 75 / 70 / 61 / 40 / 31 | 6,4% | tidak |  |
+| v2_internal+eksternal | kmeans | 8 | 0,189 | 1,401 | 77 | 1.602 | 0,86 | 97 / 82 / 76 / 62 / 54 / 52 / 38 / 26 | 5,3% | tidak |  |
+
+ARI seed Agglomerative = 1 karena algoritmanya deterministik (tidak bergantung seed); baseline aturan juga deterministik. Inertia hanya untuk K-Means.
+
+## B. Model terpilih vs model terbaik tanpa syarat ukuran cluster
+
+| Ukuran | Baseline aturan (ruang v2) | **Terpilih (K39)** | Terbaik tanpa syarat ukuran (K 3–6, ARI ≥ 0,80) | Terbaik mutlak (K 2–8, tanpa syarat) | Terbaik + fitur stunting (K39) | Terbaik Agglomerative (K39) |
+|---|---|---|---|---|---|---|
+| model_id | `aturan_v2_internal` | `kmeans_v2_internal_k6` | `agglo_v1_internal_k3` | `agglo_v1_internal_k2` | `kmeans_v2_internal+eksternal_k5` | `agglo_v2_internal_k6` |
+| Silhouette ↑ | 0,068 | 0,211 | 0,357 | 0,494 | 0,189 | 0,173 |
+| Davies-Bouldin ↓ | 2,188 | 1,274 | 0,992 | 0,785 | 1,553 | 1,448 |
+| Calinski-Harabasz ↑ | 50 | 102 | 88 | 81 | 83 | 79 |
+| ARI seed | – (deterministik) | 0,91 | – (deterministik) | – (deterministik) | 0,95 | – (deterministik) |
+| Ukuran cluster | 307 / 126 / 54 | 121 / 117 / 88 / 71 / 59 / 31 | 436 / 35 / 16 | 471 / 16 | 150 / 128 / 100 / 69 / 40 | 140 / 105 / 95 / 75 / 42 / 30 |
+| Cluster terbesar | 63,0% | 24,8% | 89,5% | 96,7% | 30,8% | 28,7% |
+| Cluster terkecil | 11,1% | 6,4% | 3,3% | 3,3% | 8,2% | 6,2% |
+
+## C. Isi model tanpa syarat ukuran (`agglo_v1_internal_k3`)
+
+| Cluster | Posyandu | cakupan ibu hamil | cakupan bayi balita | kelengkapan laporan | anomali data | kelengkapan alat standar | jumlah kader | kader terlatih |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 436 | 62,3 | 60,3 | 100,0% | 1,2 | 3,6/5 | 5,3 | 43,7 |
+| 2 | 35 | 65,5 | 74,5 | 100,0% | 24,3 | 3,6/5 | 5,0 | 69,6 |
+| 1 | 16 | 55,4 | 37,7 | 85,4% | 1,3 | 3,3/5 | 5,1 | 57,5 |
+| **Kota** | 487 | 62,3 | 60,6 | 99,5% | 2,9 | 3,6/5 | 5,3 | 46,0 |
+
+## D. Profil cluster model terpilih (rata-rata skala asli)
+
+| Cluster | Posyandu | Prioritas | % ibu hamil | % bayi balita | % baris anomali | Alat std baik | Kader | % kader terlatih |
+|---|---|---|---|---|---|---|---|---|
+| K1 Cakupan rendah | 121 | Tinggi | 35,4 | 44,6 | 0,5 | 4,2/5 | 5,0 | 43,6 |
+| K2 Kader banyak, cakupan rendah | 31 | Tinggi | 65,0 | 49,5 | 0,5 | 2,9/5 | 8,1 | 49,7 |
+| K3 Kekurangan alat antropometri | 59 | Sedang | 59,3 | 57,8 | 1,7 | 0,8/5 | 5,1 | 65,8 |
+| K4 Pencatatan perlu diverifikasi | 71 | Sedang | 70,8 | 69,2 | 16,3 | 4,1/5 | 5,2 | 39,3 |
+| K5 Cakupan baik, kader belum terlatih | 117 | Sedang | 75,2 | 71,0 | 0,4 | 4,0/5 | 5,1 | 8,7 |
+| K6 Kinerja baik (percontohan) | 88 | Rendah | 76,2 | 67,5 | 0,2 | 4,1/5 | 5,0 | 89,8 |
+| **Kota** | 487 |  | 62,3 | 60,6 | 2,9 | 3,6/5 | 5,3 | 46,0 |
+
+| Cluster | Karakter | Rekomendasi tindakan |
+|---|---|---|
+| K1 Cakupan rendah | Cakupan ibu hamil 35% dan bayi balita 45%, jauh di bawah rata-rata kota (62% dan 61%), padahal alat dan jumlah kader tidak jauh dari rata-rata. | Sweeping/kunjungan rumah ibu hamil dan balita, pengingat jadwal (pesan WA, pengumuman RT), koordinasi dengan bidan kelurahan; periksa juga apakah angka Sasaran terlalu besar. |
+| K2 Kader banyak, cakupan rendah | Rata-rata 8,1 kader per posyandu (kota 5,3), tetapi cakupan bayi balita hanya 49% (kota 61%). | Masalahnya bukan kekurangan tenaga: supervisi puskesmas atas pembagian tugas dan jadwal kader, kunjungan rumah sasaran yang tidak datang, evaluasi lokasi dan jam buka posyandu. |
+| K3 Kekurangan alat antropometri | Hanya 0,8 dari 5 jenis alat standar dalam kondisi baik (kota 3,6), sementara cakupan mendekati rata-rata kota. | Prioritaskan pengadaan/penggantian alat standar (timbangan digital, pengukur panjang/tinggi badan, pita LILA) di posyandu cluster ini lebih dulu; kalibrasi alat yang masih ada. |
+| K4 Pencatatan perlu diverifikasi | Rata-rata 16,3% baris laporan 2025 bertanda anomali (kota 2,9%), sehingga cakupannya (71% ibu hamil, 69% bayi balita) belum bisa dipercaya penuh. | Puskesmas memverifikasi angka Sasaran dan Cakupan sebelum dipakai untuk target; pendampingan pengisian format laporan bulanan; cocokkan Sasaran balita dengan data penduduk 0-4 tahun. |
+| K5 Cakupan baik, kader belum terlatih | Cakupan di atas rata-rata kota (75% ibu hamil, 71% bayi balita), tetapi baru 9% kader ikut pelatihan 25 keterampilan (kota 46%). | Ikutkan kader pelatihan 25 keterampilan secara bertahap; cakupan sudah baik, pelatihan menjaga mutu pengukuran dan konseling. |
+| K6 Kinerja baik (percontohan) | Cakupan ibu hamil 76% dan bayi balita 68%, 90% kader terlatih, anomali data 0,2%: semua indikator di atas atau mendekati rata-rata kota. | Jadikan percontohan dan mentor bagi posyandu cluster lain (kunjungan belajar antarkader); cukup pemantauan rutin. |
+
+## E. Apakah K lebih kecil lebih tepat? (K-Means v2 internal, aturan penamaan yang sama)
+
+### K = 4 (Silhouette 0,211, DBI 1,514, ARI 0,92)
+
+| Cluster | Posyandu | Karakter |
+|---|---|---|
+| K1 Cakupan rendah | 183 | Cakupan ibu hamil 40% dan bayi balita 48%, jauh di bawah rata-rata kota (62% dan 61%), padahal alat dan jumlah kader tidak jauh dari rata-rata. |
+| K2 Kader banyak, cakupan rendah | 38 | Rata-rata 7,9 kader per posyandu (kota 5,3), tetapi cakupan bayi balita hanya 50% (kota 61%). |
+| K3 Pencatatan perlu diverifikasi | 81 | Rata-rata 15,3% baris laporan 2025 bertanda anomali (kota 2,9%), sehingga cakupannya (71% ibu hamil, 68% bayi balita) belum bisa dipercaya penuh. |
+| K4 Kinerja baik (percontohan) | 185 | Cakupan ibu hamil 80% dan bayi balita 72%, 40% kader terlatih, anomali data 0,3%: semua indikator di atas atau mendekati rata-rata kota. |
+
+Tabulasi silang K=6 (baris) × K=4 (kolom), jumlah posyandu:
+
+| K=6 | K1 Cakupan rendah | K2 Kader banyak, cakupan rendah | K3 Pencatatan perlu diverifikasi | K4 Kinerja baik (percontohan) |
+|---|---|---|---|---|
+| K1 Cakupan rendah | 121 | 0 | 0 | 0 |
+| K2 Kader banyak, cakupan rendah | 0 | 31 | 0 | 0 |
+| K3 Kekurangan alat antropometri | 31 | 3 | 7 | 18 |
+| K4 Pencatatan perlu diverifikasi | 0 | 0 | 71 | 0 |
+| K5 Cakupan baik, kader belum terlatih | 5 | 4 | 0 | 108 |
+| K6 Kinerja baik (percontohan) | 26 | 0 | 3 | 59 |
+
+### K = 5 (Silhouette 0,211, DBI 1,349, ARI 0,96)
+
+| Cluster | Posyandu | Karakter |
+|---|---|---|
+| K1 Cakupan rendah | 144 | Cakupan ibu hamil 36% dan bayi balita 45%, jauh di bawah rata-rata kota (62% dan 61%), padahal alat dan jumlah kader tidak jauh dari rata-rata. |
+| K2 Kader banyak, cakupan rendah | 38 | Rata-rata 7,9 kader per posyandu (kota 5,3), tetapi cakupan bayi balita hanya 50% (kota 61%). |
+| K3 Pencatatan perlu diverifikasi | 76 | Rata-rata 16,1% baris laporan 2025 bertanda anomali (kota 2,9%), sehingga cakupannya (70% ibu hamil, 69% bayi balita) belum bisa dipercaya penuh. |
+| K4 Cakupan baik, kader belum terlatih | 126 | Cakupan di atas rata-rata kota (74% ibu hamil, 72% bayi balita), tetapi baru 10% kader ikut pelatihan 25 keterampilan (kota 46%). |
+| K5 Mendekati rata-rata kota | 103 | Tidak ada indikator yang menyimpang jauh dari rata-rata kota. |
+
+Tabulasi silang K=6 (baris) × K=5 (kolom), jumlah posyandu:
+
+| K=6 | K1 Cakupan rendah | K2 Kader banyak, cakupan rendah | K3 Pencatatan perlu diverifikasi | K4 Cakupan baik, kader belum terlatih | K5 Mendekati rata-rata kota |
+|---|---|---|---|---|---|
+| K1 Cakupan rendah | 117 | 0 | 0 | 4 | 0 |
+| K2 Kader banyak, cakupan rendah | 0 | 31 | 0 | 0 | 0 |
+| K3 Kekurangan alat antropometri | 20 | 3 | 4 | 5 | 27 |
+| K4 Pencatatan perlu diverifikasi | 0 | 0 | 71 | 0 | 0 |
+| K5 Cakupan baik, kader belum terlatih | 0 | 4 | 0 | 113 | 0 |
+| K6 Kinerja baik (percontohan) | 7 | 0 | 1 | 4 | 76 |
+

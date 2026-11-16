@@ -1,0 +1,41 @@
+# Performa & ukuran data — pipeline posyandu
+
+## 1. Durasi task — run sukses terakhir `final2_tahap10__20261116`
+mulai 2026-11-16 07:45:11 UTC, selesai 07:46:14 UTC, total 63 detik
+
+task                                mulai (+detik)  durasi (detik)
+init_schema                                    0.2             4.9
+ingest_web                                     6.0             2.1
+ingest_pdf                                     6.0             0.7
+ingest_excel                                   6.0             0.6
+load_staging.staging_pdf                       9.0            16.5
+load_staging.staging_laporan                   9.0            10.0
+load_staging.staging_antrop                    9.0             7.3
+load_staging.staging_web                       9.0             1.0
+load_staging.staging_kader                    10.0             1.4
+transform                                     26.5             8.9
+quality_gate                                  36.1             0.6
+quarantine                                                dilewati
+load_dw                                       37.2             3.3
+build_mart                                    41.3             2.0
+train_ml                                      43.5            18.8
+refresh_dashboard                             62.6             0.3
+
+Task terlama: train_ml 18.8 s, load_staging.staging_pdf 16.5 s, load_staging.staging_laporan 10.0 s, transform 8.9 s
+
+## 2. Statistik 8 run sukses: min 39 s, median 57 s, maks 81 s
+(run sebelum 16 Nov memakai kode tahap lebih awal: tanpa mart/ML atau dengan uji kegagalan; penyebab selisih durasi tidak diukur terpisah)
+
+## 3. Ukuran data per layer
+bucket raw    :  17 objek, 26,95 MB (termasuk 1 objek uji/ 2,20 MB)
+bucket backup :   9 objek, 9,82 MB
+
+schema   tabel      baris  ukuran disk  tabel terbesar
+stg          5    110,154     44,20 MB  kunjungan_bulanan (106,020 baris, 42,17 MB)
+curated      8    120,587     41,42 MB  kunjungan_bulanan (106,020 baris, 36,19 MB)
+dq           5      1,488      0,73 MB  dq_log (1,101 baris, 0,39 MB)
+dw          12    115,871     37,27 MB  fact_kunjungan_bulanan (106,020 baris, 33,29 MB)
+mart        11    108,685     43,68 MB  kunjungan_posyandu_bulanan (106,020 baris, 41,95 MB)
+database DWH total (termasuk katalog): 176,37 MB
+database metadata Airflow: 11,62 MB
+backup lokal: 36,78 MB (3 dump database + mirror raw zone)

@@ -25,6 +25,11 @@ kata sandi, atau token. Data yang tampil hanya agregat dan nama wilayah/fasilita
 | `23_uji_dag_db_mati_retry_callback.txt` | 8 Uji kegagalan (a) | DB DWH tidak menerima koneksi → retry kode (5×) + retry Airflow (4 percobaan) → gagal; callback retry/gagal ke outbox lalu `dq.batch_log` | Error handling |
 | `24_uji_dag_pulih_rerun_sukses.txt` | 8 Uji kegagalan (c) | Rerun setelah DB pulih: 16 task sukses, outbox terkirim | Error handling, DR |
 | `25_validasi_mart.txt` | 9 Data mart & ML | Mart vs angka acuan (M01–M09), evaluasi model | DWH/mart, ML, evaluasi |
+| `26_ml_perbandingan.txt` | 10 ML | 45 model (baseline, K-Means & Agglomerative K2–8, 3 set fitur); terpilih vs terbaik tanpa syarat ukuran; profil & rekomendasi 6 cluster; uji K = 4/5 (`python -m ml.laporan`) | ML, evaluasi |
+| `27_performa_skalabilitas.txt` | 10 Performa | Durasi tiap task run sukses terakhir; ukuran data per layer (raw, stg, curated, dq, dw, mart, metadata, backup) | Evaluasi & scalability |
+| `28_backup.txt` | 10 Backup | DAG `posyandu_backup`: dump + manifest, mirror inkremental, retensi; 2 percobaan gagal + callback retry tercatat | Disaster recovery |
+| `29_uji_e2e_bersih.txt` | 10 Uji E2E | Stack baru volume kosong → run terjadwal 16 task sukses, Q01–Q09 lulus, validasi identik dengan stack utama, dashboard OK (`tests/uji_e2e_bersih.sh`) | Pipeline, evaluasi |
+| `30_uji_pemulihan.txt` | 10 Uji DR | Stack kosong tanpa berkas sumber → restore + verifikasi (RTO 18 detik) → pipeline ulang dari raw zone, hasil identik (`tests/uji_pemulihan.sh`) | Disaster recovery |
 | `30_airflow_daftar_dag.png`, `33_airflow_daftar_run.png` | 7–8 Orkestrasi | DAG aktif, daftar run sukses/gagal | Pipeline & orkestrasi |
 | `31_airflow_graph.png`, `32_airflow_grid_run_sukses.png` | 7–9 Orkestrasi | Graph 16 task; grid run sukses | Pipeline & orkestrasi |
 | `34_airflow_run_gagal_db_retry.png`, `35_airflow_retry_init_schema.png` | 8 Uji (a) | Run gagal, `init_schema` 4 percobaan (Task Tries 1–4) | Error handling |

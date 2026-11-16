@@ -1,0 +1,66 @@
+# Uji end-to-end dari kondisi bersih — 2026-11-16 15:47:29 +0800
+## 1. Stack baru (volume baru, tanpa port host)
+posyandu_e2e_airflow_auth
+posyandu_e2e_airflow_logs
+posyandu_e2e_lake_data
+posyandu_e2e_pg_data
+tabel di schema dw/mart sebelum pipeline: 0
+stack siap dalam 46 detik
+## 2. Aktifkan DAG (scheduler membuat run terjadwal untuk interval terakhir)
+## 3. Hasil run scheduled__2026-11-09T18:00:00+00:00
+DAG run scheduled__2026-11-09T18:00:00+00:00: state=success, conf={}, mulai=2026-11-16 07:48:37, selesai=2026-11-16 07:49:50
+task_id                                state            try  mulai                selesai            
+init_schema                            success            1  2026-11-16 07:48:37  2026-11-16 07:48:43
+ingest_pdf                             success            1  2026-11-16 07:48:44  2026-11-16 07:48:45
+ingest_excel                           success            1  2026-11-16 07:48:44  2026-11-16 07:48:50
+ingest_web                             success            1  2026-11-16 07:48:44  2026-11-16 07:48:46
+load_staging.staging_laporan           success            1  2026-11-16 07:48:51  2026-11-16 07:49:00
+load_staging.staging_kader             success            1  2026-11-16 07:48:51  2026-11-16 07:48:52
+load_staging.staging_antrop            success            1  2026-11-16 07:48:51  2026-11-16 07:48:52
+load_staging.staging_pdf               success            1  2026-11-16 07:48:51  2026-11-16 07:49:07
+load_staging.staging_web               success            1  2026-11-16 07:48:52  2026-11-16 07:48:53
+transform                              success            1  2026-11-16 07:49:08  2026-11-16 07:49:19
+quality_gate                           success            1  2026-11-16 07:49:20  2026-11-16 07:49:21
+quarantine                             skipped            0  2026-11-16 07:49:21  2026-11-16 07:49:21
+load_dw                                success            1  2026-11-16 07:49:21  2026-11-16 07:49:24
+build_mart                             success            1  2026-11-16 07:49:24  2026-11-16 07:49:26
+train_ml                               success            1  2026-11-16 07:49:26  2026-11-16 07:49:48
+refresh_dashboard                      success            1  2026-11-16 07:49:49  2026-11-16 07:49:49
+ kode_cek | lulus | is_kritis |                                                     nilai                                                      
+----------+-------+-----------+----------------------------------------------------------------------------------------------------------------
+ Q01      | t     | f         | 2023: 23700; 2024: 23700; 2025: 29220; 2026: 29400; total 106020
+ Q02      | t     | t         | kunci ganda per tahun 0; versi aktif ganda 0; tanpa versi aktif 0; rentang versi tumpang tindih 0
+ Q03      | t     | f         | persen non-numerik tersisa 0; persen terbaca tetapi hilang di curated 0
+ Q04      | t     | t         | 2023: sasaran 446517/446517, cakupan 255723/255723 (turunan 12 sel); 2024: sasaran 1191364/1191364, cakupan 27
+ Q05      | t     | t         | FK tanpa pasangan / versi SCD tidak berlaku 0; baris hilang saat lookup {'fact_kunjungan_bulanan': 0, 'fact_al
+ Q06      | t     | t         | kolom terlarang: tidak ada
+ Q07      | t     | f         | E1 tidak terpetakan 0 dari 52; E2 baris tidak terpetakan 0; kelurahan posyandu tidak terpetakan 0
+ Q08      | t     | f         | BANJARMASIN BARAT: Σkel 7708 vs buku 7708; BANJARMASIN SELATAN: Σkel 10670 vs buku 10670; BANJARMASIN TENGAH: 
+ Q09      | t     | f         | jenis kelamin kosong/N/A di fakta 0; fakta 2542 + dihapus T13 2 + ditahan (posyandu tak terpetakan) 1 = 2545 v
+(9 rows)
+
+total waktu sejak stack kosong: 146 detik
+## 4. Validasi vs stack utama (keluaran query validasi harus identik)
+sql/validasi/03_dwh.sql: 146 baris keluaran, berbeda dari stack utama: 0 baris
+sql/validasi/04_mart.sql: 122 baris keluaran, berbeda dari stack utama: 0 baris
+cuplikan validasi mart (stack uji):
+== M01 Cakupan 2025 per kelompok, filter KPI K38 (acuan ibu hamil 56,6%; bayi balita 58,7%)
+      nama_kelompok      | cakupan | sasaran | persen 
+-------------------------+---------+---------+--------
+ Ibu Hamil               |   10564 |   18669 |  56.59
+ Bayi Balita             |  166622 |  283775 |  58.72
+--
+== M02 Kelengkapan Desember 2025 (acuan 475 dari 487)
+ terlapor | posyandu 
+----------+----------
+      475 |      487
+
+--
+== M10 mart.kunjungan_posyandu_bulanan = fakta (106.020 baris) dan merekonsiliasi KPI & anomali (selisih harus 0)
+ baris_mart | baris_fakta | selisih_cakupan | selisih_sasaran | selisih_anomali 
+------------+-------------+-----------------+-----------------+-----------------
+     106020 |      106020 |               0 |               0 |               0
+
+dashboard stack uji: exception 0 | KPI [('Cakupan Bayi Balita 2025', '58,7%'), ('Posyandu terlapor (bulan 12)', '475 / 487'), ('Posyandu < 5 kader', '31 / 482'), ('Alat standar lengkap (5 jenis)', '164 / 490'), ('Rasio stunting 2025', '3,85%')]
+## 5. Hapus stack uji
+stack posyandu_e2e dan volumenya dihapus

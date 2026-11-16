@@ -1,0 +1,52 @@
+# Bukti backup — 2026-11-16 15:53 +0800
+
+## dq.batch_log tahap backup (3 run DAG posyandu_backup; 2 percobaan pertama gagal: string koneksi Airflow disembunyikan dari task, K55)
+               batch_id               |    task_name    | status | percobaan_ke | jumlah_baris |                                                                        pesan                                                                         
+--------------------------------------+-----------------+--------+--------------+--------------+------------------------------------------------------------------------------------------------------------------------------------------------------
+ scheduled__2026-11-15T17:00:00+00:00 | backup_database | GAGAL  |            1 |              | ArgumentError: Could not parse SQLAlchemy URL from given URL string
+ scheduled__2026-11-15T17:00:00+00:00 | backup_database | GAGAL  |            2 |              | ArgumentError: Could not parse SQLAlchemy URL from given URL string
+ scheduled__2026-11-15T17:00:00+00:00 | backup_database | SUKSES |            3 |       456674 | db/20261116_135053: posyandu_dw 3,230,748 byte (253 entri TOC), airflow 203,229 byte (475 entri TOC); total 3,433,977 byte; disalin ke bucket backup
+ scheduled__2026-11-15T17:00:00+00:00 | mirror_lake     | SUKSES |            1 |           17 | 17 objek (28,262,430 byte): 17 disalin baru, 0 sudah ada di mirror
+ scheduled__2026-11-15T17:00:00+00:00 | retensi_backup  | SUKSES |            1 |            0 | 1 dump lokal; dihapus 0 (-); aturan 7 harian + 4 mingguan
+ backup_manual__20261116              | backup_database | SUKSES |            1 |       456817 | db/20261116_140048: posyandu_dw 3,218,068 byte (253 entri TOC), airflow 206,107 byte (475 entri TOC); total 3,424,175 byte; disalin ke bucket backup
+ backup_manual__20261116              | mirror_lake     | SUKSES |            1 |           17 | 17 objek (28,262,430 byte): 0 disalin baru, 17 sudah ada di mirror
+ backup_manual__20261116              | retensi_backup  | SUKSES |            1 |            0 | 2 dump lokal; dihapus 0 (-); aturan 7 harian + 4 mingguan
+ backup_final__20261116               | backup_database | SUKSES |            1 |       456958 | db/20261116_155021: posyandu_dw 3,211,914 byte (253 entri TOC), airflow 208,986 byte (475 entri TOC); total 3,420,900 byte; disalin ke bucket backup
+ backup_final__20261116               | mirror_lake     | SUKSES |            1 |           17 | 17 objek (28,262,430 byte): 0 disalin baru, 17 sudah ada di mirror
+ backup_final__20261116               | retensi_backup  | SUKSES |            1 |            0 | 3 dump lokal; dihapus 0 (-); aturan 7 harian + 4 mingguan
+(11 rows)
+
+## Callback retry tercatat (tahap orkestrasi)
+               batch_id               |    task_name    | status |                                                          pesan                                                           
+--------------------------------------+-----------------+--------+--------------------------------------------------------------------------------------------------------------------------
+ scheduled__2026-11-15T17:00:00+00:00 | backup_database | GAGAL  | [on_retry_callback] percobaan gagal, Airflow akan mencoba ulang (percobaan ke-1): ArgumentError: Could not parse SQLAlch
+ scheduled__2026-11-15T17:00:00+00:00 | backup_database | GAGAL  | [on_retry_callback] percobaan gagal, Airflow akan mencoba ulang (percobaan ke-2): ArgumentError: Could not parse SQLAlch
+(2 rows)
+
+## Isi backup/output (nama & ukuran, tanpa isi)
+203229 backup/output/db/20261116_135053/airflow.dump
+4499 backup/output/db/20261116_135053/manifest.json
+3230748 backup/output/db/20261116_135053/posyandu_dw.dump
+206107 backup/output/db/20261116_140048/airflow.dump
+4489 backup/output/db/20261116_140048/manifest.json
+3218068 backup/output/db/20261116_140048/posyandu_dw.dump
+208986 backup/output/db/20261116_155021/airflow.dump
+4488 backup/output/db/20261116_155021/manifest.json
+3211914 backup/output/db/20261116_155021/posyandu_dw.dump
+mirror raw zone: 17 berkas, 27M
+
+## Bucket backup
+203229 db/20261116_135053/airflow.dump
+4499 db/20261116_135053/manifest.json
+3230748 db/20261116_135053/posyandu_dw.dump
+206107 db/20261116_140048/airflow.dump
+4489 db/20261116_140048/manifest.json
+3218068 db/20261116_140048/posyandu_dw.dump
+208986 db/20261116_155021/airflow.dump
+4488 db/20261116_155021/manifest.json
+3211914 db/20261116_155021/posyandu_dw.dump
+
+## Manifest dump terbaru (ringkas)
+20261116_155021 pg_dump (PostgreSQL) 16.16 (Debian 16.16-1.pgdg12+1)
+posyandu_dw 3211914 byte, toc 253 , tabel 41 , md5 tabel 23
+airflow 208986 byte, toc 475 , tabel 3 , md5 tabel 0

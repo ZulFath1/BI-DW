@@ -58,6 +58,12 @@ x-airflow-common: &airflow-common
     PSEUDONYM_KEY: ${PSEUDONYM_KEY}
     DATA_SOURCE_DIR: /opt/airflow/data/source
     DATA_UJI_DIR: /opt/airflow/data/uji
+    BACKUP_DIR: /opt/airflow/project/backup/output
+    # Untuk backup/restore database metadata Airflow. Airflow 3 menyembunyikan
+    # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN dari proses task, sehingga kredensial diberikan terpisah.
+    BACKUP_AIRFLOW_DB: ${AIRFLOW_DB}
+    BACKUP_AIRFLOW_DB_USER: ${AIRFLOW_DB_USER}
+    BACKUP_AIRFLOW_DB_PASSWORD: ${AIRFLOW_DB_PASSWORD}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./common:/opt/airflow/project/common
@@ -67,6 +73,8 @@ x-airflow-common: &airflow-common
     - ./ml:/opt/airflow/project/ml
     - ./tests:/opt/airflow/project/tests
     - ./sql:/opt/airflow/project/sql:ro
+    # Kode backup/restore + hasil backup (backup/output/, diabaikan git) di disk laptop, di luar volume Docker
+    - ./backup:/opt/airflow/project/backup
     - ./data/source:/opt/airflow/data/source:ro
     # Salinan data UJI untuk skenario kegagalan (dibuat tests/buat_data_uji.py; tidak di-commit)
     - ./data/uji:/opt/airflow/data/uji

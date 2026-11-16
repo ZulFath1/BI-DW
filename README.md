@@ -7,11 +7,12 @@ Proyek UAS Kecerdasan Bisnis (bidang Big Data). Membangun pipeline data dari lap
 kunjungan posyandu dan data terbuka kependudukan/stunting menjadi data lake, data
 warehouse (galaxy schema), data mart, model clustering, dan dashboard.
 
-> **Status (16 Nov 2026):** tahap 1–9 selesai — infrastruktur; ingestion ke data lake; staging;
+> **Status (16 Nov 2026):** tahap 1–10 selesai — infrastruktur; ingestion ke data lake; staging;
 > schema DWH; transform T01–T19 ke `curated`; quality gate Q01–Q09; DWH terisi (106.020 baris
-> fakta kunjungan); data mart (10 tabel); clustering posyandu (K-Means, 45 model dibandingkan);
-> dashboard Streamlit; DAG Airflow `posyandu_pipeline` (16 task) berjalan terjadwal tanggal 10 setiap
-> bulan, termasuk uji kegagalan di DAG run nyata. Belum: backup/restore, laporan PDF & PPT.
+> fakta kunjungan); data mart (11 tabel); clustering posyandu (45 model dibandingkan, daftar prioritas per
+> posyandu); dashboard Streamlit dengan filter tahun/kecamatan/puskesmas/cluster; DAG `posyandu_pipeline`
+> (16 task, tanggal 10 setiap bulan) dan `posyandu_backup` (harian); uji kegagalan, uji end-to-end dari
+> kondisi bersih, dan uji pemulihan bencana. Belum: laporan PDF & PPT.
 > Rincian per tahap: [docs/laporan_tahap/](docs/laporan_tahap/).
 
 ## Arsitektur
@@ -68,7 +69,7 @@ Semua port hanya di-bind ke `127.0.0.1` (tidak terbuka ke jaringan).
 ├── ml/                     # feature engineering, training, evaluasi
 ├── dashboard/              # aplikasi Streamlit
 ├── backup/                 # backup & restore
-├── tests/                  # uji skenario error handling
+├── tests/                  # uji error handling, uji E2E bersih, uji pemulihan, ukur performa
 ├── data/                   # TIDAK di-commit (lihat data/README.md)
 └── docs/                   # keputusan, laporan per tahap, bukti eksekusi
 ```
@@ -146,8 +147,21 @@ bila database DWH sedang tidak tersedia, catatan ditunda di outbox dan dikirim r
   K=2–8 pada tiga set fitur → model terpilih (`kmeans_v2_internal_k6`). Hasil di `mart.hasil_cluster`,
   `mart.cluster_profil`, `mart.ml_evaluasi`.
 - **Dashboard** (`dashboard/app.py`, <http://127.0.0.1:8501>): lima tab — ringkasan & insight, tren cakupan,
-  posyandu prioritas (hasil ML), stunting kelurahan, kualitas data — dengan filter tahun, kecamatan, kelompok.
-  Hanya membaca `mart`, dengan user read-only.
+  posyandu prioritas (hasil ML), stunting kelurahan, kualitas data — dengan filter tahun, kecamatan,
+  puskesmas, cluster, kelompok. Insight berpola Data → Temuan → Interpretasi → Impact → Rekomendasi,
+  dihitung ulang sesuai filter. Hanya membaca `mart`, dengan user read-only.
+- **Laporan evaluasi ML:** `docker compose exec airflow-scheduler python -m ml.laporan`.
+
+### Backup, pemulihan, uji end-to-end
+
+```bash
+docker compose exec airflow-scheduler airflow dags trigger posyandu_backup   # juga terjadwal 01.00 WITA
+bash tests/uji_e2e_bersih.sh     # stack terpisah dari volume kosong -> run terjadwal -> validasi identik
+bash tests/uji_pemulihan.sh      # stack kosong tanpa berkas sumber -> restore -> pipeline dari raw zone
+docker compose exec airflow-scheduler python -m tests.ukur_performa          # durasi task & ukuran layer
+```
+
+Rincian kebijakan backup & langkah pemulihan: [backup/README.md](backup/README.md).
 
 ### Screenshot bukti
 

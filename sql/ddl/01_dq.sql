@@ -93,3 +93,11 @@ CREATE TABLE IF NOT EXISTS dq.quality_result (
     dicatat_pada   timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_quality_result_batch ON dq.quality_result (batch_id, kode_cek);
+
+-- ---------------------------------------------------------------------
+-- Tambahan 16 Nov 2026: proses ulang dari raw zone (pemulihan bencana). Bila berkas di data/source
+-- tidak ada, ingestion memakai objek terbaru di raw zone (ingestion/ingest_files.py, ING02).
+-- ---------------------------------------------------------------------
+ALTER TABLE dq.ingest_manifest DROP CONSTRAINT IF EXISTS ingest_manifest_cara_ambil_check;
+ALTER TABLE dq.ingest_manifest ADD CONSTRAINT ingest_manifest_cara_ambil_check
+    CHECK (cara_ambil IN ('lokal', 'web', 'fallback_manual', 'raw_zone'));

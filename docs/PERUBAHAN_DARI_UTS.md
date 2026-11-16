@@ -174,3 +174,27 @@ quality check Q01–Q09, galaxy schema) **tetap dipakai** kecuali tercatat di si
   **tidak terlihat** di berkas laporan 2023–2026. Kemungkinan: perpindahan terjadi sebelum 2023, atau dilakukan
   dengan mengganti nama (sehingga tidak dapat dibedakan dari posyandu baru tanpa kode posyandu resmi). Ini batasan
   data (tidak ada kode posyandu), bukan kesalahan pipeline.
+
+## Perubahan tahap 10: ML, dashboard, backup, uji end-to-end (dicatat 16 Nov 2026)
+
+| No | Komponen | Rancangan UTS / sebelumnya | Implementasi UAS | Tanggal |
+|---|---|---|---|---|
+| P15 | Pemilihan model clustering | Metrik internal saja (Silhouette, DBI, elbow) | + syarat bisnis cluster terkecil ≥ 5% (K39); model tanpa syarat ditampilkan berdampingan | 16 Nov 2026 |
+| P16 | Keluaran ML | `hasil_cluster` berisi nomor cluster | + nama cluster bagi dinas, tingkat prioritas, rekomendasi, peringkat & alasan per posyandu (K48, K49) | 16 Nov 2026 |
+| P17 | Backup | `pg_dump` + mirror bucket, harian/mingguan | Sesuai rancangan, ditambah: dump metadata Airflow, manifest verifikasi (md5 isi tabel), retensi 7 harian + 4 mingguan, proses ulang dari raw zone (K54–K56) | 16 Nov 2026 |
+| P18 | Uji end-to-end | Tidak dirinci | Stack terpisah dari volume kosong + uji pemulihan dengan berkas sumber dihapus (K57) | 16 Nov 2026 |
+
+### P15 — syarat ukuran cluster adalah kebutuhan bisnis
+- **Model terbaik menurut Silhouette** (K 3–6, stabil): `agglo_v1_internal_k3`, Silhouette 0,357, ukuran
+  436 / 35 / 16. Cluster 436 posyandu (89,5%) berisi hampir semua posyandu dengan nilai mendekati rata-rata kota;
+  dua cluster kecil hanya memisahkan pencilan (35 posyandu dengan 24% baris anomali, 16 posyandu dengan laporan
+  tidak lengkap). Tanpa batas K sama sekali, yang tertinggi `agglo_v1_internal_k2` (0,494) bahkan 471 / 16.
+- **Kenapa ditolak:** tujuan clustering adalah membagi posyandu menjadi kelompok yang masing-masing bisa diberi
+  program berbeda. Satu kelompok berisi 9 dari 10 posyandu tidak membantu menentukan prioritas: dinas tetap harus
+  memilah 436 posyandu secara manual. Silhouette tinggi di sini berasal dari jarak pencilan, bukan dari profil
+  yang berbeda.
+- **Jujur:** syarat ≥ 5% ditambahkan **setelah** percobaan pertama (K39). Syarat ini tidak dipilih untuk menaikkan
+  metrik: model terpilih justru memiliki Silhouette **lebih rendah** (0,211 setelah K58; 0,208 sebelumnya). Yang dikorbankan metrik, yang
+  diperoleh kegunaan. Kedua model ditampilkan berdampingan di `docs/bukti/26_ml_perbandingan.txt` bagian B–C.
+- **Menjelaskan ke dosen:** "Metrik evaluasi clustering mengukur keterpisahan, bukan kegunaan. Kami memasang
+  batas bisnis lebih dulu (cluster ≥ 5%, K 3–6, stabil), lalu memilih metrik terbaik di dalam batas itu."

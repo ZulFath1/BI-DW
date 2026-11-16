@@ -1,0 +1,42 @@
+# =====================================================================
+# Override untuk UJI end-to-end dan UJI PEMULIHAN di stack terpisah (project name lain = volume baru),
+# tanpa menyentuh stack utama maupun raw zone-nya.
+#
+#   Uji E2E dari kondisi bersih (volume kosong, berkas sumber ada):
+#     docker compose -p posyandu_e2e -f docker-compose.yml -f docker/uji/compose.uji.yml up -d
+#
+#   Uji pemulihan (volume kosong, berkas sumber TIDAK ada -> data dari backup):
+#     UJI_SUMBER_DIR=./data/kosong docker compose -p posyandu_pulih -f docker-compose.yml \
+#         -f docker/uji/compose.uji.yml up -d postgres datalake datalake-init
+#
+# Perbedaan dari stack utama:
+#   - tidak ada port host (stack utama tetap memakai 5432/9000/9001/8081/8501);
+#   - folder hasil backup di-mount READ-ONLY: stack uji bisa membaca backup untuk restore,
+#     tetapi tidak bisa menulis/menghapus backup asli;
+#   - folder sumber bisa diganti (UJI_SUMBER_DIR) untuk mensimulasikan berkas sumber hilang.
+# Hapus setelah selesai: docker compose -p <nama> -f ... down -v   (hanya volume project uji)
+# =====================================================================
+
+x-uji-airflow: &uji-airflow
+  volumes:
+    - ${UJI_SUMBER_DIR:-./data/source}:/opt/airflow/data/source:ro
+    - ./backup/output:/opt/airflow/project/backup/output:ro
+
+services:
+  postgres:
+    ports: !reset []
+  datalake:
+    ports: !reset []
+  airflow-apiserver:
+    <<: *uji-airflow
+    ports: !reset []
+  dashboard:
+    ports: !reset []
+  datalake-init:
+    <<: *uji-airflow
+  airflow-init:
+    <<: *uji-airflow
+  airflow-scheduler:
+    <<: *uji-airflow
+  airflow-dag-processor:
+    <<: *uji-airflow
