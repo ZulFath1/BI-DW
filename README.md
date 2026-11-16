@@ -7,10 +7,11 @@ Proyek UAS Kecerdasan Bisnis (bidang Big Data). Membangun pipeline data dari lap
 kunjungan posyandu dan data terbuka kependudukan/stunting menjadi data lake, data
 warehouse (galaxy schema), data mart, model clustering, dan dashboard.
 
-> **Status (15 Nov 2026):** tahap 1–7 selesai — infrastruktur; ingestion ke data lake; staging;
+> **Status (16 Nov 2026):** tahap 1–9 selesai — infrastruktur; ingestion ke data lake; staging;
 > schema DWH; transform T01–T19 ke `curated`; quality gate Q01–Q09; DWH terisi (106.020 baris
-> fakta kunjungan); DAG Airflow `posyandu_pipeline` berjalan terjadwal (tanggal 10 setiap bulan).
-> Belum: data mart, ML (clustering), dashboard berisi data, backup/restore.
+> fakta kunjungan); data mart (10 tabel); clustering posyandu (K-Means, 45 model dibandingkan);
+> dashboard Streamlit; DAG Airflow `posyandu_pipeline` (16 task) berjalan terjadwal tanggal 10 setiap
+> bulan, termasuk uji kegagalan di DAG run nyata. Belum: backup/restore, laporan PDF & PPT.
 > Rincian per tahap: [docs/laporan_tahap/](docs/laporan_tahap/).
 
 ## Arsitektur
@@ -104,15 +105,27 @@ docker compose exec airflow-scheduler airflow dags trigger posyandu_pipeline
 ```
 
 Alur DAG: `init_schema → ingest_excel/ingest_pdf/ingest_web → load_staging (5 task) → transform →
-quality_gate → load_dw` (atau `quarantine` bila pemeriksaan kritis gagal). Lihat [dags/README.md](dags/README.md).
+quality_gate → load_dw → build_mart → train_ml → refresh_dashboard` (atau `quarantine` bila pemeriksaan
+kritis gagal). Lihat [dags/README.md](dags/README.md).
+
+Uji kegagalan di DAG run nyata (bukti di `docs/bukti/22–24_*.txt`):
+
+```bash
+# data buruk: salinan uji (bukan data asli) -> quality gate -> karantina, DWH tidak berubah
+docker compose exec airflow-scheduler python -m tests.buat_data_uji
+docker compose exec airflow-scheduler airflow dags trigger posyandu_pipeline --conf '{"skenario_uji": "data_buruk"}'
+# status task satu run (state, percobaan ke-)
+docker compose exec airflow-scheduler python -m tests.status_run <run_id>
+```
 
 Cara alternatif (pengembangan/uji), fungsi yang sama lewat CLI:
 
 ```bash
-docker compose exec airflow-scheduler python -m etl.cli semua          # schema → ... → load_dw
-# validasi hasil staging dan DWH (dibandingkan dengan angka acuan)
+docker compose exec airflow-scheduler python -m etl.cli semua          # schema → ... → refresh_dashboard
+# validasi hasil staging, DWH, dan mart (dibandingkan dengan angka acuan)
 docker compose exec -T postgres sh -c 'psql -U "$ETL_USER" -d "$DW_DB"' < sql/validasi/01_staging.sql
 docker compose exec -T postgres sh -c 'psql -U "$ETL_USER" -d "$DW_DB"' < sql/validasi/03_dwh.sql
+docker compose exec -T postgres sh -c 'psql -U "$ETL_USER" -d "$DW_DB"' < sql/validasi/04_mart.sql
 # uji error handling: DB terputus, web gagal, data korup, struktur berubah (E1–E5)
 docker compose exec airflow-scheduler python -m tests.uji_error_handling
 # uji quality gate: rollback Q06, quarantine Q02, idempotensi load (E6–E8)
@@ -121,7 +134,28 @@ docker compose exec airflow-scheduler python -m tests.uji_quality_gate
 
 Status setiap task tercatat di `dq.batch_log`; temuan kualitas di `dq.dq_log`; berkas/data yang
 ditolak di `dq.quarantine`; lineage berkas mentah di `dq.ingest_manifest`; hasil Q01–Q09 di
-`dq.quality_result`.
+`dq.quality_result`. Callback Airflow (retry/gagal) tercatat di `dq.batch_log` dengan tahap `orkestrasi`;
+bila database DWH sedang tidak tersedia, catatan ditunda di outbox dan dikirim run berikutnya.
+
+### Data mart, machine learning, dashboard
+
+- **Data mart** (schema `mart`, dibangun `etl/build_mart.py`): KPI cakupan per kecamatan × bulan × kelompok,
+  kelengkapan laporan, profil per posyandu (fitur ML), KPI kelurahan (stunting), ringkasan kualitas, hasil
+  quality gate terakhir. KPI cakupan = Σ cakupan ÷ Σ sasaran, baris Terlapor, bukan A1, sasaran > 0 (K38).
+- **ML** (`ml/clustering.py`, lihat [ml/README.md](ml/README.md)): baseline aturan → K-Means & Agglomerative
+  K=2–8 pada tiga set fitur → model terpilih (`kmeans_v2_internal_k6`). Hasil di `mart.hasil_cluster`,
+  `mart.cluster_profil`, `mart.ml_evaluasi`.
+- **Dashboard** (`dashboard/app.py`, <http://127.0.0.1:8501>): lima tab — ringkasan & insight, tren cakupan,
+  posyandu prioritas (hasil ML), stunting kelurahan, kualitas data — dengan filter tahun, kecamatan, kelompok.
+  Hanya membaca `mart`, dengan user read-only.
+
+### Screenshot bukti
+
+Screenshot diambil di container Playwright (tidak ada instalasi global):
+
+```bash
+docker compose --profile bukti run --rm screenshot airflow     # juga: lake, dashboard
+```
 
 ### Database
 
@@ -140,3 +174,8 @@ transaksinya read-only.
 Dataset (termasuk data pribadi kader) tidak pernah di-commit. Nama kader
 dipseudonimkan dengan kunci di `.env`, alamat kader tidak dimuat, dan screenshot
 bukti di `docs/bukti/` tidak memuat data pribadi.
+
+Berkas turunan dataset juga diperlakukan sebagai **data privat** dan tidak di-commit:
+`etl/pemetaan_posyandu_manual.csv` (pemetaan manual nama posyandu Antrop/Kader, berisi nama posyandu
+persis seperti di dataset) dan salinan uji di `data/uji/`. Pipeline tetap berjalan tanpa berkas pemetaan
+(hasilnya sedikit berbeda: fakta alat 4.890, bukan 4.900). Rinciannya di [data/README.md](data/README.md).

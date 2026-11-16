@@ -21,5 +21,19 @@ kata sandi, atau token. Data yang tampil hanya agregat dan nama wilayah/fasilita
 | `20_validasi_dwh.txt` | 6 Load DWH | DWH vs angka acuan (D01–D13) | DWH, evaluasi |
 | `21_ingest_web_tidak_berubah.txt` | 2 Ingestion | Status `tidak_berubah` dari checksum isi tabel | Data lake, velocity |
 
-Belum ada: screenshot UI Airflow (grid/graph DAG) dan konsol data lake — dijadwalkan pada tahap uji
-end-to-end (7–13 Des) memakai skrip `docs/bukti/ambil_screenshot.py` di container Playwright (K35).
+| `22_uji_dag_data_buruk_karantina.txt` | 8 Uji kegagalan (b) | DAG run nyata dengan salinan uji buruk: Q02 kritis gagal → `quarantine`, DWH tidak berubah (md5 sama) | Error handling, data quality |
+| `23_uji_dag_db_mati_retry_callback.txt` | 8 Uji kegagalan (a) | DB DWH tidak menerima koneksi → retry kode (5×) + retry Airflow (4 percobaan) → gagal; callback retry/gagal ke outbox lalu `dq.batch_log` | Error handling |
+| `24_uji_dag_pulih_rerun_sukses.txt` | 8 Uji kegagalan (c) | Rerun setelah DB pulih: 16 task sukses, outbox terkirim | Error handling, DR |
+| `25_validasi_mart.txt` | 9 Data mart & ML | Mart vs angka acuan (M01–M09), evaluasi model | DWH/mart, ML, evaluasi |
+| `30_airflow_daftar_dag.png`, `33_airflow_daftar_run.png` | 7–8 Orkestrasi | DAG aktif, daftar run sukses/gagal | Pipeline & orkestrasi |
+| `31_airflow_graph.png`, `32_airflow_grid_run_sukses.png` | 7–9 Orkestrasi | Graph 16 task; grid run sukses | Pipeline & orkestrasi |
+| `34_airflow_run_gagal_db_retry.png`, `35_airflow_retry_init_schema.png` | 8 Uji (a) | Run gagal, `init_schema` 4 percobaan (Task Tries 1–4) | Error handling |
+| `34_airflow_run_gagal_karantina.png` | 8 Uji (b) | Cabang `quarantine` gagal, `load_dw` dilewati | Error handling |
+| `36_airflow_detail_dag_jadwal.png` | 7 Orkestrasi | Jadwal `0 2 10 * *`, next run 2026-12-09 18:00 UTC = 10 Des 02.00 WITA, catchup false | Pipeline & orkestrasi |
+| `37_lake_daftar_bucket.png`, `38_lake_raw_zone.png`, `39_lake_raw_laporan.png` | 2 Data lake | Bucket raw & backup (versioning aktif), folder per sumber/tanggal, awalan `uji/` | Data lake |
+| `40–44_dashboard_*.png` | 9 Dashboard | Lima tab dashboard (KPI & insight, tren, ML, stunting, kualitas) | Dashboard, insight |
+
+Screenshot diambil oleh `ambil_screenshot.py` di container Playwright (`docker compose --profile bukti run
+--rm screenshot airflow|lake|dashboard`) dan sudah diperiksa satu per satu (16 Nov 2026): hanya memuat nama
+task/run/bucket/folder, angka agregat, serta nama posyandu & kelurahan (nama fasilitas, bukan data pribadi).
+Tidak ada nama/alamat kader, kata sandi, token, atau isi `.env`. Waktu di UI Airflow ditampilkan dalam UTC.

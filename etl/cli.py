@@ -50,10 +50,26 @@ def _task_gate_load():
     return {"quality-gate": gate, "load-dw": load_dw}
 
 
+def _task_mart_ml():
+    # Impor ditunda per task agar build-mart bisa diuji sebelum modul ML ada.
+    def build_mart(batch_id):
+        from etl.build_mart import build_mart as f
+        return f(batch_id)
+
+    def train_ml(batch_id):
+        from ml.clustering import train_ml as f
+        return f(batch_id)
+
+    def refresh_dashboard(batch_id):
+        from etl.refresh_dashboard import refresh_dashboard as f
+        return f(batch_id)
+    return {"build-mart": build_mart, "train-ml": train_ml, "refresh-dashboard": refresh_dashboard}
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="python -m etl.cli", description="Task pipeline posyandu")
-    p.add_argument("perintah", help="schema | ingest | staging | semua | nama task (mis. ingest-excel, staging-kader, transform, quality-gate, load-dw)")
+    p.add_argument("perintah", help="schema | ingest | staging | semua | nama task (mis. ingest-excel, staging-kader, transform, quality-gate, load-dw, build-mart, train-ml, refresh-dashboard)")
     p.add_argument("--batch-id", default=None, help="default: manual__<waktu sekarang>")
     a = p.parse_args(argv)
     batch_id = a.batch_id or buat_batch_id()
@@ -69,9 +85,10 @@ def main(argv: list[str] | None = None) -> int:
         urutan = _task_staging()
     elif a.perintah == "semua":
         urutan = {"schema": init_schema, **_task_ingest(), **_task_staging(), **_task_transform(),
-                  **_task_gate_load()}
+                  **_task_gate_load(), **_task_mart_ml()}
     else:
-        semua = {**_task_ingest(), **_task_staging(), **_task_transform(), **_task_gate_load()}
+        semua = {**_task_ingest(), **_task_staging(), **_task_transform(), **_task_gate_load(),
+                 **_task_mart_ml()}
         if a.perintah not in semua:
             p.error(f"perintah tidak dikenal: {a.perintah}")
         urutan = {a.perintah: semua[a.perintah]}

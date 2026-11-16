@@ -40,11 +40,12 @@ SELECT count(DISTINCT p.posyandu_id) FILTER (WHERE f.status_key = 1) AS posyandu
 FROM dw.fact_kunjungan_bulanan f JOIN dw.dim_posyandu p USING (posyandu_key)
 WHERE f.waktu_key = 202512;
 
-\echo '== D05 Cakupan 2025 = Σ cakupan ÷ Σ sasaran, Terlapor, tanpa A1 (acuan bayi balita 58,7%; ibu hamil 56,6%)'
+\echo '== D05 Cakupan 2025 = Σ cakupan ÷ Σ sasaran, Terlapor, tanpa A1, cakupan tidak NULL, sasaran > 0 (K38; acuan bayi balita 58,7%; ibu hamil 56,6%)'
 SELECT k.nama_kelompok, sum(cakupan) AS cakupan, sum(sasaran) AS sasaran,
        round(100.0 * sum(cakupan) / sum(sasaran), 2) AS persen
 FROM dw.fact_kunjungan_bulanan f JOIN dw.dim_kelompok_sasaran k USING (kelompok_key)
 WHERE f.waktu_key BETWEEN 202501 AND 202512 AND f.status_key = 1 AND f.flag_anomali & 1 = 0
+  AND f.cakupan IS NOT NULL AND f.sasaran > 0
 GROUP BY k.kelompok_key, k.nama_kelompok ORDER BY k.kelompok_key;
 
 \echo '== D06 Sasaran bayi balita Des 2025 per kecamatan (acuan Tengah 3.499, Utara 6.281, Barat 5.151, Selatan 5.530, Timur 2.838; kota 23.299)'

@@ -1,16 +1,19 @@
 """Task init_schema: menjalankan semua berkas DDL di sql/ddl/ secara berurutan.
 
 Semua DDL ditulis idempotent (CREATE ... IF NOT EXISTS, CREATE OR REPLACE VIEW,
-INSERT ... ON CONFLICT DO NOTHING), sehingga aman dijalankan pada setiap run pipeline
-dan tidak pernah menghapus data. Seluruh berkas dijalankan dalam SATU transaksi:
-bila satu berkas gagal, tidak ada perubahan schema yang tersimpan.
+INSERT ... ON CONFLICT), sehingga aman dijalankan pada setiap run pipeline dan tidak pernah
+menghapus data. Seluruh berkas dijalankan dalam SATU transaksi: bila satu berkas gagal, tidak
+ada perubahan schema yang tersimpan.
+
+Sebagai task pertama setiap run, init_schema juga mengirim catatan callback yang tertunda di
+outbox (kegagalan yang terjadi saat database tidak tersedia, lihat common.batch).
 """
 
 from __future__ import annotations
 
 import logging
 
-from common.batch import catat_task
+from common.batch import catat_task, kirim_outbox
 from common.config import SQL_DIR
 from common.db import buka_koneksi
 
@@ -37,9 +40,10 @@ def terapkan_ddl() -> list[str]:
     return [f.name for f in berkas]
 
 
-def init_schema(batch_id: str) -> None:
+def init_schema(batch_id: str, percobaan_ke: int | None = None) -> None:
     # DDL dijalankan dulu karena tabel dq.batch_log sendiri dibuat oleh DDL.
     nama = terapkan_ddl()
-    with catat_task(batch_id, "init_schema", "schema") as hasil:
+    with catat_task(batch_id, "init_schema", "schema", percobaan_ke) as hasil:
+        n_outbox = kirim_outbox()
         hasil.jumlah_baris = len(nama)
-        hasil.pesan = "DDL diterapkan: " + ", ".join(nama)
+        hasil.pesan = "DDL diterapkan: " + ", ".join(nama) + f"; outbox callback terkirim: {n_outbox}"

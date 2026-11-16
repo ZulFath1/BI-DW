@@ -16,7 +16,7 @@ import logging
 from datetime import datetime
 
 from common.batch import catat_quarantine, catat_task, tulis_dq_log_mandiri
-from common.config import SUMBER_DIR, ZONA_WAKTU
+from common.config import BERKAS_UJI, SUMBER_DIR, UJI_DIR, ZONA_WAKTU
 from common.errors import DataKorupError, SumberTidakTersediaError
 from common.lake import buat_klien_s3, catat_manifest, sha256_hex, simpan_objek_raw
 
@@ -38,12 +38,25 @@ SUMBER_LOKAL = {
 }
 
 
-def ingest_berkas_lokal(batch_id: str, sumber: str, percobaan_ke: int | None = None) -> str:
+def ingest_berkas_lokal(batch_id: str, sumber: str, percobaan_ke: int | None = None,
+                        skenario_uji: str | None = None) -> str:
+    """skenario_uji (hanya untuk uji kegagalan, parameter DAG): mis. 'data_buruk' -> membaca SALINAN
+    UJI dari data/uji/, bukan data asli. Objeknya disimpan di raw zone dengan awalan `uji/` sehingga
+    tidak tercampur dengan berkas asli, dan dq_log mencatat bahwa run ini memakai data uji."""
     cfg = SUMBER_LOKAL[sumber]
     with catat_task(batch_id, f"ingest_{sumber}", "ingestion", percobaan_ke) as hasil:
-        path = SUMBER_DIR / cfg["berkas"]
+        uji = skenario_uji not in (None, "", "normal")
+        if uji:
+            if skenario_uji not in BERKAS_UJI:
+                raise ValueError(f"skenario uji tidak dikenal: {skenario_uji}")
+            path = UJI_DIR / BERKAS_UJI[skenario_uji]
+            tulis_dq_log_mandiri(batch_id, "ingestion", [{
+                "kode_aturan": "UJI01", "tingkat": "PERINGATAN", "objek": path.name, "nilai": skenario_uji,
+                "keterangan": "run memakai SALINAN UJI (bukan data asli) untuk menguji quality gate & karantina"}])
+        else:
+            path = SUMBER_DIR / cfg["berkas"]
         if not path.is_file():
-            raise SumberTidakTersediaError(f"berkas sumber tidak ditemukan: {cfg['berkas']} (lihat data/README.md)")
+            raise SumberTidakTersediaError(f"berkas sumber tidak ditemukan: {path.name} (lihat data/README.md)")
 
         waktu_ambil = datetime.now(ZONA_WAKTU)
         isi = path.read_bytes()
@@ -63,9 +76,10 @@ def ingest_berkas_lokal(batch_id: str, sumber: str, percobaan_ke: int | None = N
             }])
             log.warning("%s: checksum berbeda dari berkas pengembangan", cfg["berkas"])
 
-        unggah = simpan_objek_raw(buat_klien_s3(), sumber, cfg["berkas"], isi, cfg["content_type"],
-                                  cfg["berkas"], waktu_ambil)
-        catat_manifest(batch_id, sumber, "lokal", cfg["berkas"], unggah, cfg["content_type"], waktu_ambil)
+        prefiks = f"uji/{sumber}" if uji else sumber
+        lokasi = f"uji/{path.name}" if uji else cfg["berkas"]
+        unggah = simpan_objek_raw(buat_klien_s3(), prefiks, path.name, isi, cfg["content_type"], lokasi, waktu_ambil)
+        catat_manifest(batch_id, sumber, "lokal", lokasi, unggah, cfg["content_type"], waktu_ambil)
 
         hasil.jumlah_baris = 1
         hasil.pesan = (f"{unggah.bucket}/{unggah.object_key} ({unggah.status_unggah}), "
@@ -73,8 +87,8 @@ def ingest_berkas_lokal(batch_id: str, sumber: str, percobaan_ke: int | None = N
         return unggah.object_key
 
 
-def ingest_excel(batch_id: str, percobaan_ke: int | None = None) -> str:
-    return ingest_berkas_lokal(batch_id, "internal_laporan_posyandu", percobaan_ke)
+def ingest_excel(batch_id: str, percobaan_ke: int | None = None, skenario_uji: str | None = None) -> str:
+    return ingest_berkas_lokal(batch_id, "internal_laporan_posyandu", percobaan_ke, skenario_uji)
 
 
 def ingest_pdf(batch_id: str, percobaan_ke: int | None = None) -> str:

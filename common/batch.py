@@ -8,10 +8,12 @@ catatan GAGAL tetap tersimpan walaupun transaksi utama task di-rollback.
 from __future__ import annotations
 
 import json
+import os
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Iterator
 
 from psycopg2.extras import Json, execute_values
@@ -129,3 +131,66 @@ def catat_quarantine(batch_id: str, tahap: str, sumber: str, objek: str, alasan:
             )
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------- callback Airflow + outbox
+# Callback gagal/retry menulis ke dq.batch_log (tahap 'orkestrasi') dan dq.dq_log. Bila database DWH
+# justru sedang tidak tersedia (penyebab kegagalannya), catatan disimpan dulu sebagai berkas JSON di
+# volume log Airflow (outbox) lalu dikirim ke database oleh task pertama run berikutnya (init_schema).
+# Dengan begitu kegagalan tidak pernah hilang dari monitoring walaupun database mati.
+OUTBOX_DIR = Path(os.environ.get("DQ_OUTBOX_DIR", "/opt/airflow/logs/dq_outbox"))
+
+
+def _tulis_kejadian(e: dict, percobaan: int = 2) -> None:
+    conn = buka_koneksi(autocommit=True, percobaan=percobaan, jeda_awal=1.0)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO dq.batch_log (batch_id, task_name, tahap, status, waktu_mulai, waktu_selesai, pesan, "
+                "percobaan_ke) VALUES (%s, %s, 'orkestrasi', 'GAGAL', %s, %s, %s, %s)",
+                (e["batch_id"], e["task_name"], e["waktu"], e["waktu"], e["pesan"], e["percobaan_ke"]))
+            tulis_dq_log(cur, e["batch_id"], "orkestrasi", [{
+                "kode_aturan": "AIRFLOW", "tingkat": "KRITIS" if e["jenis"] == "gagal_final" else "PERINGATAN",
+                "objek": e["objek"], "nilai": str(e["percobaan_ke"]), "keterangan": e["pesan"]}])
+    finally:
+        conn.close()
+
+
+def catat_kejadian_orkestrasi(batch_id: str, dag_id: str, task_id: str, jenis: str, percobaan_ke: int,
+                              error: BaseException | None) -> str:
+    """jenis: 'retry' (percobaan gagal, akan diulang) | 'gagal_final' (semua percobaan habis).
+    Mengembalikan 'database' atau 'outbox' (tempat catatan disimpan)."""
+    sebab = f"{type(error).__name__}: {error}" if error is not None else "tidak diketahui"
+    keterangan = ("percobaan gagal, Airflow akan mencoba ulang" if jenis == "retry"
+                  else "task GAGAL setelah semua percobaan")
+    e = {"batch_id": batch_id, "task_name": task_id, "objek": f"{dag_id}.{task_id}", "jenis": jenis,
+         "percobaan_ke": percobaan_ke, "waktu": datetime.now(ZONA_WAKTU).isoformat(),
+         "pesan": f"[{'on_retry_callback' if jenis == 'retry' else 'on_failure_callback'}] {keterangan} "
+                  f"(percobaan ke-{percobaan_ke}): {sebab}"[:4000]}
+    try:
+        _tulis_kejadian(e)
+        return "database"
+    except Exception as err:  # database tidak tersedia -> outbox
+        OUTBOX_DIR.mkdir(parents=True, exist_ok=True)
+        e["pesan"] = (e["pesan"] + " | ditunda di outbox karena database tidak tersedia: "
+                      f"{type(err).__name__}")[:4000]
+        nama = f"{datetime.now(ZONA_WAKTU):%Y%m%dT%H%M%S%f}_{task_id}_{percobaan_ke}.json"
+        (OUTBOX_DIR / nama).write_text(json.dumps(e, ensure_ascii=False), encoding="utf-8")
+        log.error("callback: database tidak tersedia, kejadian disimpan di outbox %s", nama)
+        return "outbox"
+
+
+def kirim_outbox() -> int:
+    """Mengirim catatan callback yang tertunda ke database; berkas yang terkirim diberi akhiran .terkirim."""
+    if not OUTBOX_DIR.is_dir():
+        return 0
+    n = 0
+    for f in sorted(OUTBOX_DIR.glob("*.json")):
+        e = json.loads(f.read_text(encoding="utf-8"))
+        e["pesan"] = (e["pesan"] + f" | dikirim dari outbox pada {datetime.now(ZONA_WAKTU):%Y-%m-%d %H:%M:%S}")[:4000]
+        _tulis_kejadian(e, percobaan=5)
+        f.rename(f.with_suffix(".terkirim"))
+        n += 1
+    if n:
+        log.info("outbox: %d catatan callback tertunda dikirim ke dq.batch_log", n)
+    return n

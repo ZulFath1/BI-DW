@@ -1,0 +1,103 @@
+== M01 Cakupan 2025 per kelompok, filter KPI K38 (acuan ibu hamil 56,6%; bayi balita 58,7%)
+      nama_kelompok      | cakupan | sasaran | persen 
+-------------------------+---------+---------+--------
+ Ibu Hamil               |   10564 |   18669 |  56.59
+ Bayi Balita             |  166622 |  283775 |  58.72
+ Usia Sekolah dan Remaja |   30388 |  477899 |   6.36
+ Usia Produktif          |  146048 | 1208737 |  12.08
+ Lansia                  |   64208 |  300177 |  21.39
+
+== M02 Kelengkapan Desember 2025 (acuan 475 dari 487)
+ terlapor | posyandu 
+----------+----------
+      475 |      487
+
+== M03 Baris anomali per tahun (acuan total 2.073; 2025 = 826)
+ tahun | n_baris 
+-------+---------
+  2023 |     284
+  2024 |     333
+  2025 |     826
+  2026 |     630
+       |    2073
+
+== M04 Status data per tahun (K37: status 5 = Cakupan tanpa sasaran; 1 / 5 / 382 / 71)
+         item          | 2023  | 2024  | 2025  | 2026  
+-----------------------+-------+-------+-------+-------
+ Belum dilaporkan      |       |       |       |  7350
+ Cakupan tanpa sasaran |     1 |     5 |   382 |    71
+ Terlapor              | 11617 | 12839 | 28037 | 19232
+ Tidak berlaku         | 12082 | 10856 |   801 |      
+ Tidak terisi          |       |       |       |  2747
+
+== M05 Kader < 5 (acuan 31 dari 482, P07); alat rusak/tidak standar (335 dari 490); 5 alat standar baik (164)
+ kader_kurang_5 | berkader | alat_rusak_tstd | alat_lengkap | posyandu | layak_ml 
+----------------+----------+-----------------+--------------+----------+----------
+             31 |      482 |             335 |          164 |      490 |      487
+
+== M06 Sasaran bayi balita Des 2025 per kecamatan (acuan kota 23.299) dan rasio stunting kota 2025 (acuan 3,85%)
+      kecamatan      | sasaran_des | rasio_stunting 
+---------------------+-------------+----------------
+ BANJARMASIN BARAT   |        5151 |           4.26
+ BANJARMASIN SELATAN |        5530 |           4.30
+ BANJARMASIN TENGAH  |        3499 |           3.87
+ BANJARMASIN TIMUR   |        2838 |           3.76
+ BANJARMASIN UTARA   |        6281 |           3.03
+ KOTA                |       23299 |           3.85
+
+== M07 Model ML terpilih dan pembanding
+            model_id             | k | silhouette |  dbi  |  ari  |                        ukuran_cluster                         | is_terpilih 
+---------------------------------+---+------------+-------+-------+---------------------------------------------------------------+-------------
+ kmeans_v2_internal_k6           | 6 |      0.208 | 1.296 | 0.941 | {"0": 120, "1": 30, "2": 59, "3": 90, "4": 71, "5": 117}      | t
+ agglo_v1_internal_k3            | 3 |      0.357 | 0.991 | 1.000 | {"0": 436, "1": 16, "2": 35}                                  | f
+ aturan_v1_internal              | 3 |      0.064 | 2.280 | 1.000 | {"Baik": 54, "Perlu perhatian": 307, "Prioritas tinggi": 126} | f
+ aturan_v2_internal              | 3 |      0.069 | 2.192 | 1.000 | {"Baik": 54, "Perlu perhatian": 307, "Prioritas tinggi": 126} | f
+ aturan_v2_internal+eksternal    | 3 |      0.053 | 2.434 | 1.000 | {"Baik": 54, "Perlu perhatian": 307, "Prioritas tinggi": 126} | f
+ kmeans_v1_internal_k6           | 6 |      0.240 | 1.180 | 0.952 | {"0": 104, "1": 145, "2": 35, "3": 33, "4": 155, "5": 15}     | f
+ kmeans_v2_internal+eksternal_k6 | 6 |      0.179 | 1.528 | 0.945 | {"0": 83, "1": 108, "2": 113, "3": 66, "4": 34, "5": 83}      | f
+
+== M08 Profil cluster (rata-rata fitur, skala asli)
+              label_cluster               | n_posyandu |          fitur          | rata_rata | kota  |   z   
+------------------------------------------+------------+-------------------------+-----------+-------+-------
+ K1 alat standar kurang                   |         59 | jumlah_kader            |      5.05 |  5.20 | -0.14
+ K1 alat standar kurang                   |         59 | persen_anomali_2025     |      1.67 |  2.86 | -0.18
+ K1 alat standar kurang                   |         59 | persen_bayi_balita_2025 |     57.82 | 60.59 | -0.14
+ K1 alat standar kurang                   |         59 | persen_ibu_hamil_2025   |     59.34 | 62.27 | -0.12
+ K1 alat standar kurang                   |         59 | persen_kader_terlatih   |     65.81 | 46.00 |  0.49
+ K1 alat standar kurang                   |         59 | rasio_alat_baik         |      0.16 |  0.73 | -1.93
+ K2 cakupan rendah                        |        120 | jumlah_kader            |      4.82 |  5.20 | -0.35
+ K2 cakupan rendah                        |        120 | persen_anomali_2025     |      0.47 |  2.86 | -0.36
+ K2 cakupan rendah                        |        120 | persen_bayi_balita_2025 |     45.17 | 60.59 | -0.79
+ K2 cakupan rendah                        |        120 | persen_ibu_hamil_2025   |     35.97 | 62.27 | -1.08
+ K2 cakupan rendah                        |        120 | persen_kader_terlatih   |     41.89 | 46.00 | -0.10
+ K2 cakupan rendah                        |        120 | rasio_alat_baik         |      0.84 |  0.73 |  0.38
+ K3 data banyak anomali                   |         71 | jumlah_kader            |      5.10 |  5.20 | -0.09
+ K3 data banyak anomali                   |         71 | persen_anomali_2025     |     16.29 |  2.86 |  2.00
+ K3 data banyak anomali                   |         71 | persen_bayi_balita_2025 |     69.20 | 60.59 |  0.44
+ K3 data banyak anomali                   |         71 | persen_ibu_hamil_2025   |     70.84 | 62.27 |  0.35
+ K3 data banyak anomali                   |         71 | persen_kader_terlatih   |     39.29 | 46.00 | -0.17
+ K3 data banyak anomali                   |         71 | rasio_alat_baik         |      0.82 |  0.73 |  0.32
+ K4 kader belum terlatih & cakupan tinggi |        117 | jumlah_kader            |      5.13 |  5.20 | -0.07
+ K4 kader belum terlatih & cakupan tinggi |        117 | persen_anomali_2025     |      0.38 |  2.86 | -0.37
+ K4 kader belum terlatih & cakupan tinggi |        117 | persen_bayi_balita_2025 |     71.79 | 60.59 |  0.57
+ K4 kader belum terlatih & cakupan tinggi |        117 | persen_ibu_hamil_2025   |     75.84 | 62.27 |  0.56
+ K4 kader belum terlatih & cakupan tinggi |        117 | persen_kader_terlatih   |      8.32 | 46.00 | -0.93
+ K4 kader belum terlatih & cakupan tinggi |        117 | rasio_alat_baik         |      0.80 |  0.73 |  0.27
+ K5 kader banyak & cakupan rendah         |         30 | jumlah_kader            |      8.07 |  5.20 |  2.57
+ K5 kader banyak & cakupan rendah         |         30 | persen_anomali_2025     |      0.56 |  2.86 | -0.34
+ K5 kader banyak & cakupan rendah         |         30 | persen_bayi_balita_2025 |     44.00 | 60.59 | -0.85
+ K5 kader banyak & cakupan rendah         |         30 | persen_ibu_hamil_2025   |     57.78 | 62.27 | -0.19
+ K5 kader banyak & cakupan rendah         |         30 | persen_kader_terlatih   |     55.61 | 46.00 |  0.24
+ K5 kader banyak & cakupan rendah         |         30 | rasio_alat_baik         |      0.58 |  0.73 | -0.50
+ K6 kader terlatih & cakupan tinggi       |         90 | jumlah_kader            |      5.04 |  5.20 | -0.14
+ K6 kader terlatih & cakupan tinggi       |         90 | persen_anomali_2025     |      0.23 |  2.86 | -0.39
+ K6 kader terlatih & cakupan tinggi       |         90 | persen_bayi_balita_2025 |     67.13 | 60.59 |  0.33
+ K6 kader terlatih & cakupan tinggi       |         90 | persen_ibu_hamil_2025   |     76.32 | 62.27 |  0.58
+ K6 kader terlatih & cakupan tinggi       |         90 | persen_kader_terlatih   |     89.57 | 46.00 |  1.08
+ K6 kader terlatih & cakupan tinggi       |         90 | rasio_alat_baik         |      0.82 |  0.73 |  0.33
+
+== M09 Q06 di mart: tidak ada kolom nama/alamat/usia kader
+ kolom_terlarang 
+-----------------
+               0
+

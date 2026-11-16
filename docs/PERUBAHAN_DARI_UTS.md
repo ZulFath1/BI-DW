@@ -56,10 +56,10 @@ quality check Q01–Q09, galaxy schema) **tetap dipakai** kecuali tercatat di si
 | P04 | `dim_alat` | 10 baris | 11 baris (tensimeter "data tidak tersedia") — koreksi dokumen UTS | 15 Nov 2026 |
 | P05 | `dim_waktu` & snapshot kader | 48 bulan; fakta snapshot memakai bulan akhir periode | 48 bulan + anggota "2026, bulan tidak diketahui" (`202600`); kader `periode_snapshot = 'Tahun 2026'` | 15 Nov 2026 |
 | P06 | `dim_kelompok_umur` | "dipetakan ke kelompok sasaran secara pendekatan" tanpa rincian (seed tahap 4 sempat menandai 0–4, 10–14, 20–59 "tepat") | Hanya ≥ 60 "tepat"; lainnya "pendekatan" sesuai batas Panduan 2023 | 15 Nov 2026 |
-| P07 | Fakta kader & KPI kader | 2.543 baris; < 5 kader: 32 dari 483 | 2.542 baris; < 5 kader: **31 dari 482** | 15 Nov 2026 |
-| P08 | Status "Tidak berlaku" 2023/2024 | 11.728 / 10.785 | 12.083 / 10.861 | 15 Nov 2026 |
+| P07 | Fakta kader & KPI kader | 2.543 baris; < 5 kader: 32 dari 483 | 2.542 baris; < 5 kader: **31 dari 482** — angka UTS keliru (diterima pemilik 16 Nov 2026) | 15 Nov 2026 |
+| P08 | Status "Tidak berlaku" 2023/2024 | 11.728 / 10.785 | 12.082 / 10.856 (setelah K37; sebelumnya 12.083 / 10.861) | 16 Nov 2026 |
 | P09 | Muat fakta | upsert per kunci fakta | DELETE + INSERT ulang dalam satu transaksi; dimensi tetap upsert | 15 Nov 2026 |
-| P10 | Selisih kecil angka acuan | ibu hamil 2025 56,6%; T08 2023 625 sel | 56,70% (10.577 ÷ 18.655); T08 2023 624 sel | 15 Nov 2026 |
+| P10 | Selisih kecil angka acuan | ibu hamil 2025 56,6%; T08 2023 625 sel | ibu hamil **56,59%** (10.564 ÷ 18.669) setelah filter KPI dibetulkan (K38; sebelumnya 56,70%); T08 2023 624 sel | 16 Nov 2026 |
 
 ### P04 — `dim_alat` 11 baris (koreksi dokumen UTS)
 - **UTS:** tabel penyimpanan menulis `dim_alat` 10 baris, tetapi aturan T14 dan tabel 5.2 menyebut tensimeter
@@ -87,12 +87,31 @@ quality check Q01–Q09, galaxy schema) **tetap dipakai** kecuali tercatat di si
 - **Penjelasan selisih:** prototipe UTS tampaknya menghitung "N/A" sebagai posyandu ke-483 dengan 1 kader,
   sehingga ikut terhitung "< 5 kader". Tanpa baris itu: 482 posyandu berkader, 31 di antaranya < 5 baris kader.
   Rekonsiliasi Q09: 2.542 fakta + 2 dihapus T13 + 1 ditahan = 2.545 staging.
+- **Kesimpulan (diterima pemilik, 16 Nov 2026):** angka UTS **32 dari 483 keliru**, karena baris kader
+  berposyandu "N/A" terhitung sebagai satu posyandu. Angka yang benar **31 dari 482**; dashboard dan laporan
+  memakai angka ini.
 
 ### P08 — status "Tidak berlaku" lebih besar
 - **Temuan:** 974 baris (355 / 76 / 442 / 101 untuk 2023–2026) memiliki Sasaran kosong tetapi metrik lain terisi.
   Definisi UTS T06 tidak mencakup kasus ini. Angka UTS 11.728 dan 10.785 sama persis dengan jumlah baris yang
-  **seluruh** isiannya kosong; implementasi menambahkan 355 dan 76 baris parsial ke "Tidak berlaku" (K28).
-  Status Terlapor 2025 (28.037) dan Belum dilaporkan 2026 (7.350) sama dengan UTS.
+  **seluruh** isiannya kosong.
+- **Rincian isi 974 baris** (16 Nov 2026, dari nilai teks asli di staging):
+
+  | Isi selain Sasaran | 2023 | 2024 | 2025 | 2026 | Jumlah | Perlakuan |
+  |---|---|---|---|---|---|---|
+  | hanya % Dilayani / % Dirujuk / Dirujuk bernilai 0 | 354 | 71 | 44 | 27 | 496 | dianggap kosong |
+  | Cakupan = 0 (+ persen 0) | 0 | 0 | 16 | 3 | 19 | dianggap kosong |
+  | **Cakupan > 0** (Dirujuk tidak pernah > 0) | 1 | 5 | 382 | 71 | **459** | status 5 "Cakupan tanpa sasaran" |
+
+  Semua nilai persen dan Dirujuk di 974 baris itu bernilai 0; satu-satunya isi bermakna adalah Cakupan > 0
+  (Σ cakupan 4.496; terutama kelompok usia sekolah, produktif, dan lansia).
+- **Keputusan (K37, menggantikan K28):** nol bawaan dianggap kosong → tetap Tidak berlaku (2023–2025) /
+  Tidak terisi (2026); baris dengan Cakupan > 0 diberi status baru **"Cakupan tanpa sasaran"** dan tidak masuk
+  KPI cakupan. Hasil: Tidak berlaku 2023 / 2024 / 2025 = **12.082 / 10.856 / 801**; Tidak terisi 2026 = 2.747.
+  Selisih dengan UTS 2023 (354) dan 2024 (71) adalah baris nol bawaan yang UTS hitung sebagai "terisi".
+  Status Terlapor 2025 (28.037) dan Belum dilaporkan 2026 (7.350) tetap sama dengan UTS.
+- **Menjelaskan ke dosen:** persen 0 adalah keluaran rumus templat, bukan laporan; tetapi Cakupan > 0 tanpa
+  Sasaran adalah pelayanan nyata yang perlu diperbaiki Sasarannya oleh puskesmas, jadi ditampilkan terpisah.
 
 ### P09 — fakta dimuat ulang dalam satu transaksi
 - **UTS 4.3:** upsert dengan kunci (posyandu_key, waktu_key, kelompok_key).
@@ -101,9 +120,57 @@ quality check Q01–Q09, galaxy schema) **tetap dipakai** kecuali tercatat di si
   kritis gagal, seluruh perubahan di-ROLLBACK (uji E6) (K27).
 
 ### P10 — selisih kecil terhadap angka acuan
-- **Cakupan ibu hamil 2025:** 10.577 ÷ 18.655 = 56,698% → 56,70% bila dibulatkan; dokumen UTS menulis 56,6%
-  (kemungkinan dipotong, bukan dibulatkan — **belum diverifikasi**). Pembilang dan penyebut tidak dibandingkan
-  karena UTS tidak mencantumkannya. Bayi balita sama persis (166.622 ÷ 283.775 = 58,7%).
+- **Cakupan ibu hamil 2025 — sudah ditelusuri (16 Nov 2026), bukan pembulatan:**
+
+  | Filter | Σ cakupan | Σ sasaran | Persen |
+  |---|---|---|---|
+  | Implementasi minggu 2: Terlapor, bukan A1 | 10.577 | 18.655 | 56,698% |
+  | **Prototipe UTS**: Terlapor, bukan A1, cakupan tidak NULL, sasaran > 0, termasuk T07 | **10.564** | **18.669** | **56,586% ≈ 56,6%** |
+  | UTS tanpa cakupan turunan T07 (pembanding) | 10.564 | 18.283 | 57,780% |
+
+  Beda filter = `sasaran > 0` (syarat `cakupan tidak NULL` tidak mengubah apa pun di sini). Implementasi lama ikut
+  menghitung 494 baris yang tidak lolos `sasaran > 0`: 490 baris Sasaran 0 (cakupan 0/NULL, tanpa efek),
+  **2 baris Sasaran 0 dengan Cakupan 9 dan 1** (+10 cakupan), dan **2 baris Sasaran negatif (−2 dan −12)
+  dengan Cakupan 2 dan 1** (−14 sasaran, +3 cakupan). **Yang benar adalah filter UTS** (K38): persen
+  cakupan tidak terdefinisi untuk sasaran ≤ 0, dan baris itu sudah bertanda anomali (bit 8/16/32).
+  Bayi balita tidak berubah (166.622 ÷ 283.775 = 58,72%).
 - **T08 2023:** staging hanya berisi 624 sel Sasaran = 0 dan Cakupan kosong (dihitung langsung dari teks asli);
   UTS menulis 625. Penyebab selisih 1 sel **belum dapat dijelaskan**; T08 tidak mengubah nilai apa pun di fakta
   (tetap NULL), sehingga tidak berdampak pada angka lain.
+
+## Perubahan tindak lanjut & minggu 30 Nov–6 Des (dicatat 16 Nov 2026)
+
+| No | Komponen | Rancangan UTS | Implementasi UAS | Tanggal |
+|---|---|---|---|---|
+| P11 | `dim_status_data` | 4 status | 5 status: + "Cakupan tanpa sasaran" (K37) | 16 Nov 2026 |
+| P12 | Fitur ML | 8 fitur termasuk kelengkapan laporan dan rasio stunting kelurahan | Model terpilih memakai 6 fitur internal; kelengkapan dibuang (hampir konstan), stunting diuji tetapi menurunkan kualitas cluster (K40, K41) | 16 Nov 2026 |
+| P13 | Perpindahan posyandu antar kecamatan (SCD 2) | Diperkirakan ada (keterangan narasumber); 503 versi | 503 versi = 490 posyandu + 13 perubahan **puskesmas**; **tidak ada** perpindahan kecamatan/kelurahan yang terdeteksi di data | 16 Nov 2026 |
+| P14 | Data mart | `posyandu_profil`, `hasil_cluster`, tabel KPI | 10 tabel: + `kpi_cakupan_bulanan`, `kelengkapan_bulanan`, `kpi_kelurahan`, `ringkasan_kualitas`, `quality_gate_terakhir`, `cluster_profil`, `ml_evaluasi`, `dashboard_refresh` | 16 Nov 2026 |
+
+### P12 — fitur ML
+- **UTS 5.3:** cakupan ibu hamil & bayi balita, kelengkapan laporan, jumlah anomali, rasio alat baik, jumlah
+  kader, % kader terlatih, rasio stunting kelurahan; improvement "tanpa vs dengan fitur eksternal".
+- **Sekarang:** perbandingan tetap dijalankan (set `v1_internal`, `v2_internal`, `v2_internal+eksternal`), tetapi
+  model terpilih `kmeans_v2_internal_k6` tidak memakai kelengkapan (475/487 posyandu = 100%) dan rasio stunting
+  (Silhouette K=6 turun 0,208 → 0,179). Jumlah anomali dipakai sebagai **persen** baris anomali (log1p) agar
+  tidak bergantung pada banyaknya kelompok yang dilaporkan.
+- **Menjelaskan ke dosen:** ini hasil tahap Improvement → Comparison yang diminta; menolak fitur juga hasil.
+
+### P13 — perpindahan kecamatan tidak terdeteksi
+- **Pemeriksaan (16 Nov 2026):** 92 posyandu pertama kali muncul di 2025. Dibandingkan dengan nama posyandu
+  2023–2024 di **kelurahan lain** (nama ternormalisasi, kunci T05):
+
+  | Hasil | Jumlah |
+  |---|---|
+  | Nama sama persis dengan posyandu tahun sebelumnya di kelurahan lain | 16 (7 di antaranya ada pasangannya di kecamatan yang sama, 9 hanya di kecamatan lain) |
+  | Nama mirip (kemiripan ≥ 0,85, `difflib`) dengan posyandu kelurahan lain | 16 |
+  | Tanpa padanan nama sama sekali | 60 |
+
+  Pada **semua 32** pasangan yang namanya sama/mirip, posyandu lama **masih melapor di 2025** di kelurahannya
+  sendiri, dan tidak ada satu pun dari 395 posyandu 2024 yang hilang di 2025 (395 → 487 = 395 + 92). Jadi
+  ke-32 itu adalah posyandu **berbeda yang kebetulan bernama sama/mirip** (nama umum seperti nama bunga), bukan
+  posyandu yang pindah. Ke-92 posyandu diperlakukan sebagai posyandu baru (atau pemekaran/pendataan baru).
+- **Akibat:** SCD tipe 2 hanya mencatat 13 perubahan puskesmas; perpindahan kecamatan yang disebut narasumber
+  **tidak terlihat** di berkas laporan 2023–2026. Kemungkinan: perpindahan terjadi sebelum 2023, atau dilakukan
+  dengan mengganti nama (sehingga tidak dapat dibedakan dari posyandu baru tanpa kode posyandu resmi). Ini batasan
+  data (tidak ada kode posyandu), bukan kesalahan pipeline.

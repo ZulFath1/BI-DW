@@ -81,11 +81,15 @@ def cek_q02(cur) -> HasilCek:
                                   GROUP BY 1 HAVING NOT bool_or(is_current)) x""")[0]
     tumpang = _satu(cur, """SELECT count(*) FROM curated.posyandu_versi a JOIN curated.posyandu_versi b
                             ON a.posyandu_id = b.posyandu_id AND a.versi < b.versi AND a.berlaku_sampai >= b.berlaku_mulai""")[0]
+    # Dua baris sumber pada sheet yang sama dipetakan ke posyandu_id yang sama (transform hanya
+    # memuat baris pertama ke curated, sehingga ganda harus dicari di tabel pemetaan).
+    ganda_sumber = _satu(cur, """SELECT count(*) FROM (SELECT sumber, posyandu_id FROM curated.pemetaan_posyandu
+                                 WHERE sumber LIKE 'laporan\\_%%' GROUP BY 1, 2 HAVING count(*) > 1) x""")[0]
     n_pos, n_versi = _satu(cur, "SELECT count(DISTINCT posyandu_id), count(*) FROM curated.posyandu_versi")
-    lulus = ganda_tahun == tanpa_current == ganda_current == tumpang == 0
+    lulus = ganda_tahun == ganda_sumber == tanpa_current == ganda_current == tumpang == 0
     return HasilCek("Q02", "sebelum_load", True, lulus,
-                    f"kunci ganda per tahun {ganda_tahun}; versi aktif ganda {ganda_current}; tanpa versi aktif "
-                    f"{tanpa_current}; rentang versi tumpang tindih {tumpang}", "semua 0",
+                    f"kunci ganda per tahun {ganda_tahun + ganda_sumber}; versi aktif ganda {ganda_current}; "
+                    f"tanpa versi aktif {tanpa_current}; rentang versi tumpang tindih {tumpang}", "semua 0",
                     f"{n_pos} posyandu, {n_versi} versi")
 
 
@@ -198,10 +202,15 @@ def quarantine(batch_id: str, gagal_kritis: list[str] | None = None, percobaan_k
                     gagal_kritis = sorted({g["kode"] for g in gagal if g["kritis"]})
                 cur.execute("SELECT count(*) FROM curated.kunjungan_bulanan")
                 n = cur.fetchone()[0]
+                # Rincian baris sumber berkunci ganda (bila ada) ikut disimpan untuk ditindaklanjuti.
+                cur.execute("""SELECT sumber, posyandu_id, array_agg(baris_sumber ORDER BY baris_sumber)
+                               FROM curated.pemetaan_posyandu WHERE sumber LIKE 'laporan\\_%%'
+                               GROUP BY 1, 2 HAVING count(*) > 1""")
+                ganda = [{"sumber": s, "posyandu_id": p, "baris_sumber": b} for s, p, b in cur.fetchall()]
         finally:
             conn.close()
         catat_quarantine(batch_id, "quality", "curated", "batch",
                          f"quality gate gagal (kritis: {gagal_kritis}); curated tidak dimuat ke DWH",
-                         {"pemeriksaan_gagal": gagal, "baris_curated_kunjungan": n})
+                         {"pemeriksaan_gagal": gagal, "baris_curated_kunjungan": n, "kunci_ganda": ganda})
         hasil_task.pesan = f"batch dikarantina; kritis gagal {gagal_kritis}"
     raise RuntimeError(f"batch {batch_id} dikarantina: quality gate kritis gagal {gagal_kritis}; DWH tidak diubah")

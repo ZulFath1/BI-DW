@@ -31,13 +31,16 @@ INSERT INTO dw.dim_kelompok_sasaran (kelompok_key, kode_kelompok, nama_kelompok,
     (5, 'lansia',               'Lansia',                  249)
 ON CONFLICT (kelompok_key) DO NOTHING;
 
--- dim_status_data (T06, T15)
+-- dim_status_data (T06, T15). K37 (minggu 30 Nov–6 Des): status 5 untuk baris yang Sasarannya
+-- kosong tetapi Cakupan/Dirujuk > 0; baris yang hanya berisi nol bawaan (persen 0, Cakupan 0,
+-- Dirujuk 0) tetap diperlakukan kosong. DO UPDATE agar keterangan di database lama ikut diperbarui.
 INSERT INTO dw.dim_status_data (status_key, nama_status, keterangan) VALUES
     (1, 'Terlapor',         'Sasaran terisi'),
-    (2, 'Tidak berlaku',    'Seluruh isian kelompok kosong pada 2023–2025 (kategori layanan berbeda tiap tahun)'),
-    (3, 'Tidak terisi',     'Seluruh isian kelompok kosong pada 2026 di bulan yang sudah ada datanya'),
-    (4, 'Belum dilaporkan', 'Bulan tanpa data pada tahun berjalan; tidak dimuat sebagai 0')
-ON CONFLICT (status_key) DO NOTHING;
+    (2, 'Tidak berlaku',    'Sasaran kosong dan tidak ada Cakupan/Dirujuk > 0 pada 2023–2025 (seluruhnya kosong atau hanya nol bawaan; kategori layanan berbeda tiap tahun)'),
+    (3, 'Tidak terisi',     'Sasaran kosong dan tidak ada Cakupan/Dirujuk > 0 pada 2026 di bulan yang sudah ada datanya'),
+    (4, 'Belum dilaporkan', 'Bulan tanpa data pada tahun berjalan; tidak dimuat sebagai 0'),
+    (5, 'Cakupan tanpa sasaran', 'Sasaran kosong tetapi Cakupan atau Dirujuk > 0: ada pelayanan tercatat, persen tidak dapat dihitung; tidak masuk KPI cakupan')
+ON CONFLICT (status_key) DO UPDATE SET nama_status = EXCLUDED.nama_status, keterangan = EXCLUDED.keterangan;
 
 -- dim_alat: 5 alat × (standar, tidak standar) + tensimeter berstatus "data tidak tersedia" (T14).
 -- K15 (diputuskan): 11 baris. Dokumen UTS menulis 10 baris tetapi T14 meminta tensimeter ada di

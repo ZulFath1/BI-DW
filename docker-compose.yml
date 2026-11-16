@@ -57,6 +57,7 @@ x-airflow-common: &airflow-common
     LAKE_BUCKET_BACKUP: ${LAKE_BUCKET_BACKUP:-backup}
     PSEUDONYM_KEY: ${PSEUDONYM_KEY}
     DATA_SOURCE_DIR: /opt/airflow/data/source
+    DATA_UJI_DIR: /opt/airflow/data/uji
   volumes:
     - ./dags:/opt/airflow/dags
     - ./common:/opt/airflow/project/common
@@ -67,6 +68,8 @@ x-airflow-common: &airflow-common
     - ./tests:/opt/airflow/project/tests
     - ./sql:/opt/airflow/project/sql:ro
     - ./data/source:/opt/airflow/data/source:ro
+    # Salinan data UJI untuk skenario kegagalan (dibuat tests/buat_data_uji.py; tidak di-commit)
+    - ./data/uji:/opt/airflow/data/uji
     - airflow_logs:/opt/airflow/logs
     - airflow_auth:/opt/airflow/auth
 
@@ -234,6 +237,23 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  # Sekali jalan, hanya bila diminta: docker compose --profile bukti run --rm screenshot
+  # Mengambil screenshot UI (Airflow, konsol data lake, Streamlit) ke docs/bukti/.
+  screenshot:
+    profiles: ["bukti"]
+    build:
+      context: ./docker/playwright
+    image: posyandu-screenshot:playwright-1.52.0
+    environment:
+      AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+      LAKE_ROOT_USER: ${LAKE_ROOT_USER}
+      LAKE_ROOT_PASSWORD: ${LAKE_ROOT_PASSWORD}
+    volumes:
+      - ./docs/bukti:/bukti
+    entrypoint: ["python", "/bukti/ambil_screenshot.py"]
+    restart: "no"
 
 volumes:
   pg_data:

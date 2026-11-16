@@ -13,6 +13,10 @@ ZONA_WAKTU = ZoneInfo("Asia/Makassar")
 # Folder berkas sumber (di-mount read-only ke container).
 SUMBER_DIR = Path(os.environ.get("DATA_SOURCE_DIR", "/opt/airflow/data/source"))
 
+# Folder salinan data UJI (skenario kegagalan; bukan data asli, tidak di-commit).
+UJI_DIR = Path(os.environ.get("DATA_UJI_DIR", "/opt/airflow/data/uji"))
+BERKAS_UJI = {"data_buruk": "Laporan_uji_data_buruk.xlsx"}
+
 # Folder SQL (DDL & query validasi) di container.
 SQL_DIR = Path(os.environ.get("SQL_DIR", "/opt/airflow/project/sql"))
 

@@ -20,3 +20,10 @@ Checksum SHA-256 berkas yang dipakai saat pengembangan (untuk memastikan berkas 
 
 Folder `data/source/` di-mount **read-only** ke container Airflow
 (`/opt/airflow/data/source`), sehingga pipeline tidak dapat mengubah berkas sumber.
+
+## Berkas privat lain yang tidak di-commit
+
+| Letak | Berkas | Keterangan |
+|---|---|---|
+| `etl/pemetaan_posyandu_manual.csv` | tabel pemetaan nama posyandu Antrop/Kader → `posyandu_id` (9 baris, ditinjau manual) | **Bagian dari data privat:** berisi nama posyandu dan kelurahan persis seperti di dataset. Tidak di-commit (pola `*.csv`). Tanpa berkas ini pipeline tetap berjalan: 8 nama tetap cocok lewat pencocokan fuzzy (PERINGATAN T14) dan 1 posyandu Antrop (Lestari IV) ditahan, sehingga fakta alat menjadi 4.890 baris, bukan 4.900 (lihat `docs/KEPUTUSAN.md` K25, K26, K36). Format kolom: `sumber, kelurahan, kunci_sumber, kelurahan_tujuan, kunci_tujuan, keterangan` (kunci = nama ternormalisasi T05) |
+| `data/uji/` | `Laporan_uji_data_buruk.xlsx` | Salinan UJI (dibuat `tests/buat_data_uji.py` dari berkas asli; satu baris sheet 2025 digandakan dan satu sel persen diisi teks). Hanya dipakai DAG run dengan parameter `skenario_uji=data_buruk`. Karena turunan dari dataset privat, tidak di-commit |

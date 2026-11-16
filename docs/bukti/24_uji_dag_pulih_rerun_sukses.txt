@@ -1,0 +1,75 @@
+# Uji kegagalan (c): rerun setelah database pulih -> sukses
+# Trigger manual setelah ALLOW_CONNECTIONS true. init_schema mengirim 4 catatan callback tertunda dari outbox ke dq.batch_log.
+# Dibuat 2026-11-16 00:44 (waktu laptop) oleh Claude Code dari DAG run nyata
+
+## Status DAG run & task (metadata Airflow; waktu UTC)
+DAG run uji_c_pulih__20261116: state=success, conf={}, mulai=2026-11-15 16:43:32, selesai=2026-11-15 16:44:27
+task_id                                state            try  mulai                selesai            
+init_schema                            success            1  2026-11-15 16:43:32  2026-11-15 16:43:33
+ingest_excel                           success            1  2026-11-15 16:43:34  2026-11-15 16:43:34
+ingest_web                             success            1  2026-11-15 16:43:34  2026-11-15 16:43:35
+ingest_pdf                             success            1  2026-11-15 16:43:34  2026-11-15 16:43:34
+load_staging.staging_antrop            success            1  2026-11-15 16:43:35  2026-11-15 16:43:36
+load_staging.staging_laporan           success            1  2026-11-15 16:43:35  2026-11-15 16:43:44
+load_staging.staging_kader             success            1  2026-11-15 16:43:35  2026-11-15 16:43:36
+load_staging.staging_pdf               success            1  2026-11-15 16:43:35  2026-11-15 16:43:50
+load_staging.staging_web               success            1  2026-11-15 16:43:36  2026-11-15 16:43:37
+transform                              success            1  2026-11-15 16:43:51  2026-11-15 16:44:00
+quality_gate                           success            1  2026-11-15 16:44:01  2026-11-15 16:44:01
+quarantine                             skipped            0  2026-11-15 16:44:01  2026-11-15 16:44:01
+load_dw                                success            1  2026-11-15 16:44:02  2026-11-15 16:44:05
+build_mart                             success            1  2026-11-15 16:44:06  2026-11-15 16:44:07
+train_ml                               success            1  2026-11-15 16:44:08  2026-11-15 16:44:25
+refresh_dashboard                      success            1  2026-11-15 16:44:26  2026-11-15 16:44:26
+
+## Sidik DWH sesudah run (bandingkan dengan sidik sebelum)
+  fkb   |   sas   |             md5_fkb              | dim_pos | kader |       batch_dw        
+--------+---------+----------------------------------+---------+-------+-----------------------
+ 106020 | 6283900 | 8fc975a917c8e0175c6280486cf3a340 |     503 |  2542 | uji_c_pulih__20261116
+
+## dq.batch_log (tahap orkestrasi = dicatat callback Airflow)
+ log_id |              task_name               |   tahap   | status | percobaan_ke |   wita   |                                                                                             pesan                                                                                              
+--------+--------------------------------------+-----------+--------+--------------+----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    145 | init_schema                          | schema    | SUKSES |            1 | 00:43:33 | DDL diterapkan: 01_dq.sql, 02_stg.sql, 03_dw.sql, 04_dw_seed.sql, 05_dw_view.sql, 06_curated.sql, 07_mart.sql; outbox callback terkirim: 4
+    150 | ingest_internal_laporan_posyandu     | ingestion | SUKSES |            1 | 00:43:34 | raw/internal_laporan_posyandu/2026-11-16/Laporan_Kunjungan_Posyandu.xlsx (sudah_ada), 2524269 byte, sha256 f21c45b8000f…
+    151 | ingest_e1_disdukcapil_agregat_2025s2 | ingestion | SUKSES |            1 | 00:43:34 | raw/e1_disdukcapil_agregat_2025s2/2026-11-16/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf (sudah_ada), 9108359 byte, sha256 2382f1bc0c8a…
+    152 | ingest_web                           | ingestion | SUKSES |            1 | 00:43:34 | 2024: web -> e2_stunting_2024/2026-11-15/232842_stunting_2024.html (tidak_berubah); 2025: web -> e2_stunting_2025/2026-11-15/232843_stunting_2025.html (tidak_berubah)
+    153 | staging_pdf                          | staging   | SUKSES |            1 | 00:43:35 | 992 baris; 52 kelurahan; peringatan bentuk: 16
+    154 | staging_antrop                       | staging   | SUKSES |            1 | 00:43:36 | 490 baris posyandu + 1 baris total; cut off : JUNI 2026
+    155 | staging_kader                        | staging   | SUKSES |            1 | 00:43:36 | 2545 kader; nama kosong 0; kolom tanpa header berisi: 1
+    156 | staging_laporan                      | staging   | SUKSES |            1 | 00:43:36 | posyandu per sheet: 2023=395, 2024=395, 2025=487, 2026=490
+    157 | staging_web                          | staging   | SUKSES |            1 | 00:43:37 | baris kelurahan: 2024=52, 2025=52
+    158 | transform                            | transform | SUKSES |            1 | 00:43:52 | staging batch uji_c_pulih__20261116; curated: kelurahan=52, posyandu_versi=503, pemetaan=4802, kunjungan=106020, alat=4900, kader=2542, penduduk=1664, stunting=104
+    159 | quality_gate                         | quality   | SUKSES |            1 | 00:44:01 | lulus 6/6; gagal kritis []; peringatan []
+    160 | load_dw                              | load      | SUKSES |            1 | 00:44:02 | COMMIT; Q04/Q05/Q06 lulus; fact_kunjungan_bulanan=106020, fact_alat_snapshot=4900, fact_kader_snapshot=2542, fact_penduduk_kelurahan=1664, fact_stunting_kelurahan=104, dim_posyandu=503, dim_
+    161 | build_mart                           | mart      | SUKSES |            1 | 00:44:06 | kpi_cakupan_bulanan=1200, kelengkapan_bulanan=240, posyandu_profil=490, kpi_kelurahan=104, ringkasan_kualitas=49, quality_gate_terakhir=9
+    162 | train_ml                             | ml        | SUKSES |            1 | 00:44:10 | terpilih kmeans_v2_internal_k6 (silhouette 0.208, DBI 1.296); 45 model dibandingkan
+    163 | refresh_dashboard                    | dashboard | SUKSES |            1 | 00:44:26 | dashboard sehat (HTTP 200); cache memakai batch uji_c_pulih__20261116
+
+## dq.quality_result
+ kode_cek | is_kritis | lulus |                                                     nilai                                                      
+----------+-----------+-------+----------------------------------------------------------------------------------------------------------------
+ Q01      | f         | t     | 2023: 23700; 2024: 23700; 2025: 29220; 2026: 29400; total 106020
+ Q02      | t         | t     | kunci ganda per tahun 0; versi aktif ganda 0; tanpa versi aktif 0; rentang versi tumpang tindih 0
+ Q03      | f         | t     | persen non-numerik tersisa 0; persen terbaca tetapi hilang di curated 0
+ Q07      | f         | t     | E1 tidak terpetakan 0 dari 52; E2 baris tidak terpetakan 0; kelurahan posyandu tidak terpetakan 0
+ Q08      | f         | t     | BANJARMASIN BARAT: Σkel 7708 vs buku 7708; BANJARMASIN SELATAN: Σkel 10670 vs buku 10670; BANJARMASIN TENGAH: 
+ Q09      | f         | t     | jenis kelamin kosong/N/A di fakta 0; fakta 2542 + dihapus T13 2 + ditahan (posyandu tak terpetakan) 1 = 2545 v
+ Q04      | t         | t     | 2023: sasaran 446517/446517, cakupan 255723/255723 (turunan 12 sel); 2024: sasaran 1191364/1191364, cakupan 27
+ Q05      | t         | t     | FK tanpa pasangan / versi SCD tidak berlaku 0; baris hilang saat lookup {'fact_kunjungan_bulanan': 0, 'fact_al
+ Q06      | t         | t     | kolom terlarang: tidak ada
+
+## dq.quarantine
+ tahap | sumber | objek | alasan | kunci_ganda 
+-------+--------+-------+--------+-------------
+
+## dq.dq_log terpilih (UJI01, ING01, T05 kritis, T03 peringatan, AIRFLOW)
+ kode_aturan | tingkat | tahap | baris_sumber | keterangan 
+-------------+---------+-------+--------------+------------
+
+
+## Berkas outbox setelah dikirim (akhiran .terkirim)
+20261116T002127999533_init_schema_1.terkirim
+20261116T002510272500_init_schema_2.terkirim
+20261116T003231821090_init_schema_3.terkirim
+20261116T004302156727_init_schema_4.terkirim

@@ -1,0 +1,76 @@
+# Uji kegagalan (b): data uji buruk -> quality gate -> karantina, DWH tidak berubah
+# run_id uji_b_data_buruk__20261116, conf skenario_uji=data_buruk (salinan uji data/uji/, BUKAN data asli: baris 5 sheet 2025 digandakan ke baris 492, sel H6 diisi teks)
+# Dibuat 2026-11-16 00:20 (waktu laptop) oleh Claude Code dari DAG run nyata
+
+## Status DAG run & task (metadata Airflow; waktu UTC)
+DAG run uji_b_data_buruk__20261116: state=failed, conf={'skenario_uji': 'data_buruk'}, mulai=2026-11-15 16:18:54, selesai=2026-11-15 16:19:33
+task_id                                state            try  mulai                selesai            
+init_schema                            success            1  2026-11-15 16:18:55  2026-11-15 16:18:59
+ingest_pdf                             success            1  2026-11-15 16:19:00  2026-11-15 16:19:01
+ingest_excel                           success            1  2026-11-15 16:19:00  2026-11-15 16:19:01
+ingest_web                             success            1  2026-11-15 16:19:00  2026-11-15 16:19:02
+load_staging.staging_laporan           success            1  2026-11-15 16:19:02  2026-11-15 16:19:12
+load_staging.staging_kader             success            1  2026-11-15 16:19:02  2026-11-15 16:19:10
+load_staging.staging_pdf               success            1  2026-11-15 16:19:02  2026-11-15 16:19:18
+load_staging.staging_antrop            success            1  2026-11-15 16:19:02  2026-11-15 16:19:03
+load_staging.staging_web               success            1  2026-11-15 16:19:03  2026-11-15 16:19:04
+transform                              success            1  2026-11-15 16:19:19  2026-11-15 16:19:29
+quality_gate                           success            1  2026-11-15 16:19:29  2026-11-15 16:19:30
+load_dw                                skipped            0  2026-11-15 16:19:30  2026-11-15 16:19:30
+build_mart                             skipped            0  2026-11-15 16:19:30  2026-11-15 16:19:30
+quarantine                             failed             1  2026-11-15 16:19:30  2026-11-15 16:19:31
+train_ml                               skipped            0  2026-11-15 16:19:30  2026-11-15 16:19:30
+refresh_dashboard                      skipped            0  2026-11-15 16:19:31  2026-11-15 16:19:31
+
+## Sidik DWH sesudah run (bandingkan dengan sidik sebelum)
+  fkb   |   sas   |             md5_fkb              | dim_pos | kader |                 batch_dw                 
+--------+---------+----------------------------------+---------+-------+------------------------------------------
+ 106020 | 6283900 | 8fc975a917c8e0175c6280486cf3a340 |     503 |  2542 | manual__2026-11-15T16:09:56.651734+00:00
+
+## dq.batch_log (tahap orkestrasi = dicatat callback Airflow)
+ log_id |              task_name               |   tahap    | status | percobaan_ke |   wita   |                                                                                           pesan                                                                                            
+--------+--------------------------------------+------------+--------+--------------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    132 | init_schema                          | schema     | SUKSES |            1 | 00:18:59 | DDL diterapkan: 01_dq.sql, 02_stg.sql, 03_dw.sql, 04_dw_seed.sql, 05_dw_view.sql, 06_curated.sql, 07_mart.sql; outbox callback terkirim: 0
+    133 | ingest_e1_disdukcapil_agregat_2025s2 | ingestion  | SUKSES |            1 | 00:19:00 | raw/e1_disdukcapil_agregat_2025s2/2026-11-16/Buku_Data_Agregat_Kependudukan_Kota_Banjarmasin_Semester_2_Tahun_2025.pdf (sudah_ada), 9108359 byte, sha256 2382f1bc0c8a…
+    134 | ingest_internal_laporan_posyandu     | ingestion  | SUKSES |            1 | 00:19:00 | raw/uji/internal_laporan_posyandu/2026-11-16/Laporan_uji_data_buruk.xlsx (diunggah), 2305419 byte, sha256 ceb9449b1fed…
+    135 | ingest_web                           | ingestion  | SUKSES |            1 | 00:19:00 | 2024: web -> e2_stunting_2024/2026-11-15/232842_stunting_2024.html (tidak_berubah); 2025: web -> e2_stunting_2025/2026-11-15/232843_stunting_2025.html (tidak_berubah)
+    136 | staging_pdf                          | staging    | SUKSES |            1 | 00:19:03 | 992 baris; 52 kelurahan; peringatan bentuk: 16
+    137 | staging_laporan                      | staging    | SUKSES |            1 | 00:19:03 | posyandu per sheet: 2023=395, 2024=395, 2025=488, 2026=490
+    138 | staging_antrop                       | staging    | SUKSES |            1 | 00:19:03 | 490 baris posyandu + 1 baris total; cut off : JUNI 2026
+    139 | staging_web                          | staging    | SUKSES |            1 | 00:19:04 | baris kelurahan: 2024=52, 2025=52
+    140 | staging_kader                        | staging    | SUKSES |            1 | 00:19:09 | 2545 kader; nama kosong 0; kolom tanpa header berisi: 1
+    141 | transform                            | transform  | SUKSES |            1 | 00:19:20 | staging batch uji_b_data_buruk__20261116; curated: kelurahan=52, posyandu_versi=503, pemetaan=4803, kunjungan=106020, alat=4900, kader=2542, penduduk=1664, stunting=104
+    142 | quality_gate                         | quality    | SUKSES |            1 | 00:19:29 | lulus 3/6; gagal kritis ['Q02']; peringatan ['Q01', 'Q03']
+    143 | quarantine                           | quality    | SUKSES |            1 | 00:19:31 | batch dikarantina; kritis gagal ['Q02']
+    144 | quarantine                           | orkestrasi | GAGAL  |            1 | 00:19:31 | [on_failure_callback] task GAGAL setelah semua percobaan (percobaan ke-1): RuntimeError: batch uji_b_data_buruk__20261116 dikarantina: quality gate kritis gagal ['Q02']; DWH tidak diubah
+
+## dq.quality_result
+ kode_cek | is_kritis | lulus |                                                     nilai                                                      
+----------+-----------+-------+----------------------------------------------------------------------------------------------------------------
+ Q01      | f         | f     | 2023: 23700; 2024: 23700; 2025: 29220; 2026: 29400; total 106020
+ Q02      | t         | f     | kunci ganda per tahun 1; versi aktif ganda 0; tanpa versi aktif 0; rentang versi tumpang tindih 0
+ Q03      | f         | f     | persen non-numerik tersisa 1; persen terbaca tetapi hilang di curated 0
+ Q07      | f         | t     | E1 tidak terpetakan 0 dari 52; E2 baris tidak terpetakan 0; kelurahan posyandu tidak terpetakan 0
+ Q08      | f         | t     | BANJARMASIN BARAT: Σkel 7708 vs buku 7708; BANJARMASIN SELATAN: Σkel 10670 vs buku 10670; BANJARMASIN TENGAH: 
+ Q09      | f         | t     | jenis kelamin kosong/N/A di fakta 0; fakta 2542 + dihapus T13 2 + ditahan (posyandu tak terpetakan) 1 = 2545 v
+
+## dq.quarantine
+  tahap  | sumber  | objek |                              alasan                               |                                           kunci_ganda                                           
+---------+---------+-------+-------------------------------------------------------------------+-------------------------------------------------------------------------------------------------
+ quality | curated | batch | quality gate gagal (kritis: ['Q02']); curated tidak dimuat ke DWH | [{"sumber": "laporan_2025", "posyandu_id": "BASIRIH--AMANAH_BANGSA", "baris_sumber": [5, 492]}]
+
+## dq.dq_log terpilih (UJI01, ING01, T05 kritis, T03 peringatan, AIRFLOW)
+ kode_aturan |  tingkat   |   tahap    | baris_sumber |                                                                                 keterangan                                                                                 
+-------------+------------+------------+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ UJI01       | PERINGATAN | ingestion  |              | run memakai SALINAN UJI (bukan data asli) untuk menguji quality gate & karantina
+ ING01       | PERINGATAN | ingestion  |              | checksum berbeda dari berkas saat pengembangan; kemungkinan versi baru dari dinas
+ T05         | KRITIS     | transform  |            5 | posyandu_id ganda dalam satu tahun
+ T05         | KRITIS     | transform  |          492 | posyandu_id ganda dalam satu tahun
+ T03         | PERINGATAN | transform  |            6 | nilai tidak dapat diubah menjadi angka; dimuat sebagai NULL
+ T05         | KRITIS     | transform  |              | 60 sel dari 1 baris sumber berkunci posyandu ganda tidak dimuat ke curated (baris pertama dipertahankan); batch akan gagal Q02
+ AIRFLOW     | KRITIS     | orkestrasi |              | [on_failure_callback] task GAGAL setelah semua percobaan (percobaan ke-1): RuntimeError: batch uji_b_data_buruk__20261116 dikarantina: quality gate kritis gagal ['Q02']; 
+
+
+## Sidik DWH SEBELUM run uji (diambil sebelum trigger)
+ fkb=106020 sas=6283900 md5_fkb=8fc975a917c8e0175c6280486cf3a340 dim_pos=503 kader=2542 batch_dw=manual__2026-11-15T16:09:56.651734+00:00
+## Kesimpulan: sidik sesudah = sebelum -> DWH tidak berubah; DAG run failed karena task quarantine sengaja gagal.

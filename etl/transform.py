@@ -240,12 +240,22 @@ def transform_kunjungan(cur, ktx: Konteks, peta_baris: dict) -> pd.DataFrame:
     status[kosong_sas & lama] = 2                                             # Tidak berlaku
     status[kosong_sas & ~lama & df.bulan_ke.isin(bulan_berdata_2026)] = 3       # Tidak terisi
     status[kosong_sas & ~lama & ~df.bulan_ke.isin(bulan_berdata_2026)] = 4      # Belum dilaporkan
+    # K37: Sasaran kosong tetapi ada pelayanan nyata (Cakupan/Dirujuk > 0) -> status 5. Baris yang
+    # hanya berisi nol bawaan templat (persen 0, Cakupan 0, Dirujuk 0) tidak memuat informasi
+    # pelayanan, sehingga tetap diperlakukan kosong (status 2/3 di atas).
+    bermakna = kosong_sas & ((cak > 0) | (dir_ > 0))
+    status[bermakna] = 5                                                      # Cakupan tanpa sasaran
     sebagian = kosong_sas & ~semua_kosong
     if sebagian.any():
-        per_tahun = df[sebagian].groupby("tahun_sheet").size().to_dict()
-        ktx.catat("T06", "PERINGATAN", "Sasaran kosong tetapi metrik lain terisi: status bukan Terlapor "
-                  f"(definisi T06), nilai lain tetap dimuat apa adanya; per tahun {per_tahun}", "laporan",
-                  kolom="sasaran", nilai=int(sebagian.sum()))
+        def _pt(m):
+            return {int(k): int(v) for k, v in df[m].groupby("tahun_sheet").size().items()}
+        hanya_nol = sebagian & ~bermakna
+        ktx.catat("T06", "INFO", "Sasaran kosong, metrik lain hanya nol bawaan (persen/Cakupan/Dirujuk = 0): "
+                  f"diperlakukan kosong (Tidak berlaku/Tidak terisi); per tahun {_pt(hanya_nol)}", "laporan",
+                  kolom="sasaran", nilai=int(hanya_nol.sum()))
+        ktx.catat("T06", "PERINGATAN", "Sasaran kosong tetapi Cakupan/Dirujuk > 0: status 'Cakupan tanpa sasaran' "
+                  f"(K37), nilai dimuat apa adanya, persen NULL; per tahun {_pt(bermakna)}", "laporan",
+                  kolom="sasaran", nilai=int(bermakna.sum()))
     ktx.catat("T15", "INFO", f"bulan 2026 yang sudah berisi data: {sorted(bulan_berdata_2026)}; bulan lain "
               "berstatus Belum dilaporkan (tidak dimuat sebagai 0)", "sheet 2026")
 
@@ -307,6 +317,17 @@ def transform_kunjungan(cur, ktx: Konteks, peta_baris: dict) -> pd.DataFrame:
                   ("T02" if kode == "baris" else kode)), "INFO", f"ringkasan per tahun: {kode} = {isi}",
                   "kunjungan_bulanan", kolom=kode)
     ktx.ringkas["kunjungan"] = ringkas
+
+    # Kunci ganda (dua baris sumber -> posyandu sama pada tahun sama, sudah dicatat T05 KRITIS):
+    # curated menyimpan baris sumber pertama saja agar transform tetap selesai, lalu Q02 (kritis)
+    # menemukan kunci ganda di curated.pemetaan_posyandu -> batch dikarantina, DWH tidak berubah.
+    ganda = out.sort_values("baris_sumber").duplicated(["posyandu_id", "waktu_key", "kelompok_key"], keep="first")
+    if ganda.any():
+        dibuang = out.loc[ganda[ganda].index]
+        ktx.catat("T05", "KRITIS", f"{int(ganda.sum())} sel dari {dibuang.baris_sumber.nunique()} baris sumber berkunci "
+                  "posyandu ganda tidak dimuat ke curated (baris pertama dipertahankan); batch akan gagal Q02",
+                  "kunjungan_bulanan", kolom="posyandu_id", nilai=sorted(set(map(int, dibuang.baris_sumber))))
+        out = out.drop(index=dibuang.index)
     return out
 
 
